@@ -1,5 +1,7 @@
 import "server-only";
 
+import { cacheLife, cacheTag } from "next/cache";
+
 import { sql } from "@/lib/db";
 
 /**
@@ -30,14 +32,23 @@ const DEFAUTS: Parametres = {
 };
 
 /**
- * Lecture des réglages à chaque requête.
+ * Lecture des réglages, mutualisée pour la requête en cours.
  *
- * Pas de cache mémoire maison : en serverless, le processus est éphémère et
- * un cache local ne sert à rien ; de plus, Cache Components interdit les
- * valeurs instables (`Date.now()`) pendant le prérendu. La requête est une
- * simple SELECT sur une table de 9 lignes : coût négligeable, toujours à jour.
+ * `use cache` (Cache Components) évite de relire la table plusieurs fois
+ * dans une même page — l'accueil admin appelait `lireParametres()` trois fois.
+ * Durée volontairement très courte (10 s) et invalidation explicite depuis
+ * /admin/reglages (`revalidateTag("parametres")`) : les changements sont
+ * visibles immédiatement.
+ *
+ * Important : ce cache empêche aussi la lecture pendant le prérendu, ce qui
+ * supprime le bruit « fetch() rejects when the prerender is complete » que
+ * l'on voyait au build sur /admin.
  */
 export async function lireParametres(): Promise<Parametres> {
+  "use cache";
+  cacheLife({ stale: 10, revalidate: 10, expire: 30 });
+  cacheTag("parametres");
+
   try {
     const lignes = await sql`SELECT cle, valeur FROM parametres`;
     const map = new Map(lignes.map((l) => [String(l.cle), String(l.valeur)]));

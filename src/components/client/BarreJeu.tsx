@@ -1,6 +1,7 @@
 "use client";
 
 import { usePathname } from "next/navigation";
+import type { ReactNode } from "react";
 
 /**
  * En-tête des pages client.
@@ -45,7 +46,9 @@ export function PiedJeu({ texte }: { texte: string }) {
   const chemin = usePathname();
   if (chemin === "/roue") return null;
   return (
-    <footer className="mt-4 text-center text-[10px] leading-snug text-cendre/40">{texte}</footer>
+    <footer className="mt-4 text-center text-[10px] leading-snug text-cendre/40">
+      {texte}
+    </footer>
   );
 }
 
@@ -60,5 +63,46 @@ function PastilleRoue() {
           "conic-gradient(#e8c66a 0 45deg, #7c1d2e 45deg 90deg, #e8c66a 90deg 135deg, #1f6f5c 135deg 180deg, #e8c66a 180deg 225deg, #7c1d2e 225deg 270deg, #e8c66a 270deg 315deg, #1f6f5c 315deg 360deg)",
       }}
     />
+  );
+}
+
+/**
+ * Cadre des pages client : la largeur s'adapte à la page.
+ *
+ *  - /roue : jusqu'à 1280 px. La roue se dimensionne sur la hauteur de
+ *    l'écran et a besoin de place ; la colonne de texte reste lisible.
+ *  - ailleurs (inscription, résultat) : 480 px, la colonne « téléphone »
+ *    qui va bien à un formulaire.
+ */
+export function CadreJeu({
+  nom,
+  pied,
+  children,
+}: {
+  nom: string;
+  pied: string;
+  children: ReactNode;
+}) {
+  const chemin = usePathname();
+  const large = chemin === "/roue";
+
+  return (
+    <div
+      className={`relative mx-auto flex h-dvh w-full flex-col pb-2 ${
+        // PLEINE LARGEUR ET SANS DÉFILEMENT sur /roue : le halo lumineux de la
+        // roue dépasse volontairement de son carré (12 %) et, sans cela,
+        // allongeait la page d'une soixantaine de pixels sur grand écran.
+        // L'inscription garde le défilement (formulaires longs sur mobile).
+        large
+          ? "max-w-[1280px] overflow-hidden px-0 sm:px-6"
+          : "max-w-[480px] px-3.5"
+      }`}
+    >
+      <BarreJeu nom={nom} />
+      <main className="flex min-h-0 flex-1 flex-col justify-center">
+        {children}
+      </main>
+      <PiedJeu texte={pied} />
+    </div>
   );
 }

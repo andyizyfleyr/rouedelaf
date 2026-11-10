@@ -55,9 +55,10 @@ export type RoueProps = {
   /** Largeur maximale en pixels. */
   taille?: number;
   /**
-   * Plein écran : la roue prend la plus grande dimension carrée possible
-   * (`min(100vw, 100dvh)`), sans jamais dépasser l'écran ni créer de
-   * défilement. Le titre et le bouton se superposent par-dessus.
+   * Plein cadre : la roue prend toute la largeur de sa colonne et jusqu'à
+   * toute la hauteur de l'écran (`100dvh`), sans jamais créer de défilement.
+   * Utilisé par l'écran à deux colonnes, où la roue occupe la colonne de
+   * droite et les textes celle de gauche.
    */
   pleinEcran?: boolean;
   className?: string;
@@ -196,19 +197,12 @@ export function Roue({
       style={
         pleinEcran
           ? {
-              // Le plus grand carré qui tient DANS LA PLACE RESTANTE : largeur
-              // pleine, mais jamais plus haut que le conteneur (aspect-ratio +
-              // max-height font réduire la largeur automatiquement). C'est ce
-              // qui fait que la roue occupe vraiment l'écran, sans jamais
-              // provoquer de défilement ni passer sous le bouton.
-              // `100vw` / `100dvh` : la roue ignore les marges de la page et
-              // se cale directement sur l'écran. `dvh` tient compte de la
-              // barre d'adresse des navigateurs mobiles.
-              // Le plus grand carré possible : toute la largeur de l'écran,
-              // mais jamais plus haut que la place laissée par le titre et le
-              // bouton (`- 132px`). `dvh` gère la barre d'adresse mobile.
-              width: "min(100vw, calc(100dvh - 120px))",
-              maxWidth: "none",
+              // Le carré est piloté par le PARENT, qui connaît l'écran (voir
+              // EcranRoue : `h-[min(100dvh,60vw)] w-[...]`). Ici on remplit
+              // simplement ce carré : une seule source de vérité, aucune
+              // largeur nulle possible, aucune déformation.
+              width: "100%",
+              maxWidth: "100%",
               aspectRatio: "1 / 1",
             }
           : { maxWidth: taille ?? 350 }
@@ -412,8 +406,12 @@ export function Roue({
         <ellipse cx={CENTRE - 8} cy={CENTRE - 9} rx={9} ry={5} fill="rgba(255,255,255,0.5)" />
       </svg>
 
-      {/* Étiquette : ce que le doigt survole / désigne */}
-      <div className="pointer-events-none absolute inset-x-0 -bottom-5 flex justify-center">
+      {/*
+        Étiquette : ce que le doigt survole / désigne. Elle est posée À
+        L'INTÉRIEUR du carré (bottom-0) : collée en dessous (-bottom-5), elle
+        allongeait la page de ~28 px et créait un défilement parasite.
+      */}
+      <div className="pointer-events-none absolute inset-x-0 bottom-0 flex justify-center">
         <span className="max-w-[86%] truncate rounded-full border border-or/30 bg-nuit/90 px-3.5 py-1 text-[10.5px] font-bold tracking-[0.14em] text-or-clair uppercase shadow-lg backdrop-blur">
           {enMouvement ? "La roue tourne…" : (secteurCourant ?? "Bonne chance")}
         </span>

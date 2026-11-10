@@ -2,30 +2,47 @@
 
 import { motion } from "framer-motion";
 import { useCallback, useRef, useState } from "react";
-import { Gift, Loader2, Sparkles, TriangleAlert } from "lucide-react";
+import {
+  Gift,
+  Loader2,
+  MapPin,
+  Sparkles,
+  Ticket,
+  TriangleAlert,
+} from "lucide-react";
 
 import { PopupResultat } from "@/components/client/PopupResultat";
 import { Roue } from "@/components/roue/Roue";
 import { entetesJeu } from "@/lib/appareil";
 import { suivreEvenement } from "@/lib/pixel";
 import { deverrouillerAudio } from "@/lib/sons";
-import type { CadeauRoue, ResultatTirageApi, TirageResultat } from "@/lib/types";
+import type {
+  CadeauRoue,
+  ResultatTirageApi,
+  TirageResultat,
+} from "@/lib/types";
 
 /**
- * /roue — LA ROUE OCCUPE TOUT L'ÉCRAN.
+ * /roue — DEUX COLONNES : la roue à droite, les textes et le bouton à gauche.
  *
- * Mise en page : la roue est dimensionnée sur `min(100vw, 100dvh)` et centrée,
- * donc elle prend toute la place disponible, en portrait comme en paysage,
- * sans jamais déborder. Le titre et le bouton se superposent au-dessus et
- * en dessous : ils ne volent pas de hauteur à la roue.
+ * La roue se dimensionne sur la HAUTEUR DE L'ÉCRAN (`100dvh`), pas sur une
+ * largeur fixe : c'est ce qui la rend vraiment grande sur ordinateur et
+ * tablette, où elle occupait avant un petit carré au milieu du vide.
+ *
+ * Adaptation :
+ *  - `sm` et plus (ordinateur, tablette, téléphone en paysage) : deux
+ *    colonnes, textes à gauche, roue géante à droite ;
+ *  - téléphone en portrait : une seule colonne. Deux colonnes sur 390 px
+ *    écraseraient la roue à ~220 px et rendraient les libellés illisibles ;
+ *    la roue prend donc toute la largeur, ce qui est la plus grande taille
+ *    possible dans ce format. Les textes restent compacts au-dessus.
  *
  * Le résultat est décidé AVANT l'animation (le serveur renvoie `caseIndex`) :
  * le doigt s'arrête exactement dessus, impossible de tricher côté navigateur.
  *
- * ⚠️ Aucune redirection automatique. Quand la roue s'arrête, un bouton
- * « Voir mon cadeau » apparaît ; c'est le joueur qui ouvre la popup de
- * résultat. Une redirection surprise donnait l'impression que la page se
- * fermait toute seule.
+ * ⚠️ Aucune redirection automatique : dès que la roue s'immobilise, la popup
+ * de résultat s'ouvre par-dessus. On reste sur /roue, on peut fermer la popup
+ * pour revoir la roue ou rouvrir son cadeau.
  */
 export function EcranRoue({
   cases,
@@ -49,7 +66,7 @@ export function EcranRoue({
   const [cible, setCible] = useState<number | null>(null);
   const [erreur, setErreur] = useState<string | null>(null);
   const [resultat, setResultat] = useState<ResultatTirageApi | null>(null);
-  /** La roue est immobile : le bouton « Voir mon cadeau » peut apparaître. */
+  /** La roue est immobile : la popup de résultat peut s'ouvrir. */
   const [arretee, setArretee] = useState(false);
   const [popup, setPopup] = useState(false);
   const dejaLance = useRef(false);
@@ -62,7 +79,10 @@ export function EcranRoue({
     deverrouillerAudio();
 
     try {
-      const res = await fetch("/api/tirage", { method: "POST", headers: entetesJeu() });
+      const res = await fetch("/api/tirage", {
+        method: "POST",
+        headers: entetesJeu(),
+      });
       const data = await res.json();
 
       if (!res.ok) {
@@ -84,7 +104,15 @@ export function EcranRoue({
     }
   }, [chargement, cible]);
 
-  const surFin = useCallback(() => setArretee(true), []);
+  /**
+   * La roue vient de s'immobiliser : on ouvre la popup de résultat TOUT DE
+   * SUITE. Le tour est terminé, le cadeau doit s'afficher — sans pour autant
+   * quitter la page (aucune redirection).
+   */
+  const surFin = useCallback(() => {
+    setArretee(true);
+    setPopup(true);
+  }, []);
 
   /**
    * Ce que la popup affiche : le tirage qui vient d'être joué, ou celui que le
@@ -111,76 +139,123 @@ export function EcranRoue({
   const peutVoirResultat = tirageAffiche !== null;
   /** QR : celui renvoyé par /api/tirage, sinon celui préparé au chargement. */
   const qrAffiche = resultat?.qrDataUrl ?? qrInitial;
-  const titreBouton = resultat
-    ? "Voir mon cadeau"
-    : tirageAffiche
-      ? "Revoir mon résultat"
-      : "Tourner la roue";
+  const enVol = cible !== null && !arretee;
+
+  const titreBouton = chargement
+    ? "Préparation…"
+    : enVol
+      ? "La roue tourne…"
+      : resultat
+        ? "Voir mon cadeau"
+        : tirageAffiche
+          ? "Revoir mon cadeau"
+          : "Tourner la roue";
 
   return (
     /**
-     * Tout est en FLUX et centré verticalement : titre, roue, bouton.
+     * Le cadre de /roue est en pleine largeur, sans marge intérieure : la roue
+     * touche donc les bords de l'écran sur téléphone.
      *
-     * La roue se dimensionne sur l'ÉCRAN (100vw), pas sur son parent, donc les
-     * marges du gabarit ne la rétrécissent plus : elle touche les bords. Le
-     * `- 132px` de sa hauteur maximale est exactement la place du titre et du
-     * bouton, ce qui évite de laisser un grand vide ou de couper le bouton.
+     * MOBILE (< sm) : une colonne, dans cet ordre — textes, roue, bouton.
+     * SM ET PLUS : une GRILLE à deux colonnes et deux rangées.
+     *   ┌───────────────┬──────────────────┐
+     *   │ textes        │                  │
+     *   ├───────────────┤   roue (1→3)     │
+     *   │ bouton        │                  │
+     *   └───────────────┴──────────────────┘
+     * Pourquoi une grille et non deux flex imbriqués : le bouton doit être le
+     * DERNIER élément dans le DOM (il passe sous la roue sur mobile) tout en
+     * remontant sous les textes à gauche sur grand écran. La grille le place
+     * explicitement avec `col-start` / `row-start`, sans dépendre de l'ordre
+     * du DOM ni d'un `display: contents` fragile.
      */
-    <div className="-mx-3.5 flex min-h-0 w-[calc(100%+1.75rem)] flex-1 flex-col items-center justify-center gap-2.5">
-      {/* Le haut de l'écran est rempli par le badge + le compteur de tours :
-          la roue reste plein cadre sans laisser de mur vide au-dessus. */}
-      <header className="flex w-full shrink-0 flex-col items-center gap-1">
-        <span className="flex items-center gap-1.5 rounded-full border border-or/30 bg-or/[0.07] px-2.5 py-0.5 text-[9px] font-semibold tracking-[0.18em] text-or-clair/85 uppercase">
-          <Sparkles className="size-2.5" />
-          {toursRestants > 1 ? `${toursRestants} tours` : "1 tour offert"}
-          <span className="text-cendre/45">·</span> cadeau garanti
+    <div className="grid min-h-0 w-full flex-1 grid-cols-1 content-center justify-items-center gap-3 px-0 sm:grid-cols-[minmax(0,1fr)_auto] sm:grid-rows-[auto_1fr] sm:content-center sm:items-center sm:justify-items-start sm:gap-x-14 sm:gap-y-4 sm:px-12 sm:py-6">
+      {/* ————— TEXTES (colonne 1, rangée 1) ————— */}
+      <div className="flex w-full min-w-0 flex-col items-center gap-2 px-4 pt-2 text-center sm:col-start-1 sm:row-start-1 sm:max-w-[30rem] sm:items-start sm:gap-3 sm:px-0 sm:pt-0 sm:text-left">
+        <span className="inline-flex max-w-full items-center gap-1.5 rounded-full border border-or/30 bg-or/[0.07] px-2.5 py-0.5 text-[9px] leading-tight font-semibold tracking-[0.16em] text-or-clair/85 uppercase sm:px-3 sm:py-1 sm:text-[10.5px]">
+          <Sparkles className="size-2.5 shrink-0 sm:size-3" />
+          <span className="truncate">
+            {toursRestants > 1 ? `${toursRestants} tours` : "1 tour offert"} ·
+            cadeau garanti
+          </span>
         </span>
-        <h1 className="texte-or px-3 font-titre text-[15px] leading-tight font-bold tracking-[0.05em] uppercase sm:text-[17px]">
-          {nom}, à vous de jouer
+
+        <h1 className="texte-or font-titre text-[19px] leading-[1.06] font-bold tracking-[0.02em] uppercase sm:text-[clamp(24px,2.4vw,34px)]">
+          {nom},
+          <br />
+          <span className="text-[15px] tracking-[0.06em] sm:text-[clamp(18px,1.7vw,25px)]">
+            à vous de jouer
+          </span>
         </h1>
-      </header>
 
-      <div className="apparait flex min-h-0 w-full shrink-0 items-center justify-center">
-        <Roue
-          cases={cases}
-          caseCible={cible}
-          onFin={surFin}
-          tours={6}
-          duree={6.6}
-          taille={420}
-          pleinEcran
-        />
-      </div>
+        <p className="max-w-[34ch] text-[10.5px] leading-snug text-cendre/70 sm:text-[13px]">
+          Tournez la roue et découvrez votre cadeau. Un seul tour par personne.
+        </p>
 
-      <div className="w-full shrink-0 px-3.5">
         {erreur && (
           <motion.p
             initial={{ opacity: 0, y: 6 }}
             animate={{ opacity: 1, y: 0 }}
-            className="mb-1.5 flex items-start gap-2 rounded-xl border border-bordeaux-clair/50 bg-bordeaux/40 px-2.5 py-1.5 text-[11.5px] leading-snug text-rose-100"
+            className="flex w-full max-w-[38ch] items-start gap-1.5 rounded-lg border border-bordeaux-clair/50 bg-bordeaux/40 px-2 py-1.5 text-[10.5px] leading-snug text-rose-100"
           >
-            <TriangleAlert className="mt-px size-3.5 shrink-0" />
+            <TriangleAlert className="mt-px size-3 shrink-0" />
             <span>{erreur}</span>
           </motion.p>
         )}
 
+        {/* Rappel boutique : seulement quand la colonne a la place. */}
+        <div className="mt-1 hidden w-full flex-col gap-2 border-t border-or/15 pt-3 text-[11.5px] leading-snug text-cendre/60 lg:flex">
+          <span className="flex items-start gap-2">
+            <MapPin className="mt-px size-3.5 shrink-0 text-or/70" />
+            <span>
+              {boutique.nom}
+              <br />
+              <span className="text-cendre/45">{boutique.adresse}</span>
+            </span>
+          </span>
+          <span className="flex items-center gap-2">
+            <Ticket className="size-3.5 shrink-0 text-or/70" />
+            Présentez le code en boutique
+          </span>
+        </div>
+      </div>
+
+      {/* ————— LA ROUE (colonne 2, les deux rangées) ————— */}
+      <div className="order-2 flex min-h-0 min-w-0 items-center justify-center sm:order-none sm:col-start-2 sm:row-span-2 sm:row-start-1">
+        <div className="h-[min(calc(100dvh-11rem),100vw)] w-[min(calc(100dvh-11rem),100vw)] sm:h-[min(calc(100dvh-3rem),56vw)] sm:w-[min(calc(100dvh-3rem),56vw)]">
+          <Roue
+            cases={cases}
+            caseCible={cible}
+            onFin={surFin}
+            tours={6}
+            duree={6.6}
+            taille={420}
+            pleinEcran
+          />
+        </div>
+      </div>
+
+      {/* ————— LE BOUTON (colonne 1, rangée 2 ; sous la roue sur mobile) ————— */}
+      <div className="order-3 w-full shrink-0 px-4 sm:order-none sm:col-start-1 sm:row-start-2 sm:self-start sm:px-0">
         <button
           type="button"
-          onClick={() => (peutVoirResultat && (arretee || !resultat) ? setPopup(true) : tourner())}
-          disabled={chargement || (cible !== null && !arretee)}
-          className="btn-or w-full !py-3 text-[15px]"
+          onClick={() =>
+            peutVoirResultat && (arretee || !resultat)
+              ? setPopup(true)
+              : tourner()
+          }
+          disabled={chargement || enVol}
+          className="btn-or w-full !px-3 !py-3 text-[14px] sm:!py-3.5 sm:text-[15px]"
         >
-          {chargement ? (
+          {chargement || enVol ? (
             <>
-              <Loader2 className="size-4 animate-spin" /> Préparation…
-            </>
-          ) : cible !== null && !arretee ? (
-            <>
-              <Loader2 className="size-4 animate-spin" /> La roue tourne…
+              <Loader2 className="size-4 shrink-0 animate-spin" />
+              <span className="truncate">{titreBouton}</span>
             </>
           ) : (
             <>
-              <Gift className="size-4" /> {titreBouton}
+              <Gift className="size-4 shrink-0" />
+              <span className="truncate">{titreBouton}</span>
             </>
           )}
         </button>

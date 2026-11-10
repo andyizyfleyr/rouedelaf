@@ -1,18 +1,18 @@
 import type { ReactNode } from "react";
 
 import { boutique } from "@/lib/env";
-import { BarreJeu, PiedJeu } from "@/components/client/BarreJeu";
+import { CadreJeu } from "@/components/client/BarreJeu";
 
 /**
- * Gabarit des pages client : centré, mobile d'abord, avec un en-tête discret.
- * Le fond « velours » est fourni par le layout racine.
+ * Gabarit des pages client. Le fond « velours » est fourni par le layout
+ * racine ; la largeur du cadre dépend de la page (voir `CadreJeu`) : colonne
+ * de téléphone pour l'inscription, pleine largeur pour la roue à deux
+ * colonnes, qui a besoin de place pour être grande.
  */
 export default function LayoutClient({ children }: { children: ReactNode }) {
   return (
-    <div className="relative mx-auto flex h-dvh w-full max-w-[480px] flex-col px-3.5 pb-2">
-      <BarreJeu nom={boutique.nom} />
-      <main className="flex min-h-0 flex-1 flex-col justify-center">{children}</main>
-      <PiedJeu texte={`${boutique.adresse} · Un cadeau par personne`} />
-    </div>
+    <CadreJeu nom={boutique.nom} pied={`${boutique.adresse} · Un cadeau par personne`}>
+      {children}
+    </CadreJeu>
   );
 }

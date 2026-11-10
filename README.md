@@ -117,11 +117,27 @@ Les données sont conservées dans `.pgdata/` (ignoré par git).
 1. [console.neon.tech](https://console.neon.tech) → **New project** (région la plus
    proche : `eu-central-1` pour le Bénin).
 2. Copiez la **connection string « Pooled »** (elle contient `-pooler`).
-3. Initialisez la base **avant** le premier déploiement :
+3. Initialisez la base. **Deux méthodes**, au choix :
 
-```bash
-DATABASE_URL="postgresql://...neon.tech/roue?sslmode=require" npm run db:seed
-```
+   **Depuis votre poste** (si votre réseau autorise le port 5432) :
+
+   ```bash
+   DATABASE_URL="postgresql://...neon.tech/roue?sslmode=require" npm run db:seed
+   ```
+
+   **Depuis Vercel** (si le port 5432 est bloqué par votre réseau — proxy
+   d'entreprise, wifi public…) : déployez d'abord, connectez-vous à
+   `/connexion`, puis déclenchez l'initialisation. Elle rejoue le même
+   `sql/schema.sql` et insère les 8 cadeaux de démonstration :
+
+   ```bash
+   curl -X POST https://votre-domaine.vercel.app/api/admin/init \
+        -H "Cookie: roue_admin=<votre cookie de session>"
+   ```
+
+   La route est **réservée à une session admin** et refuse d'écraser une base
+   déjà peuplée (sauf `?forcer=1`). Elle est idempotente : un second appel ne
+   fait rien.
 
 ### b) Créer Redis Upstash (anti-abus)
 

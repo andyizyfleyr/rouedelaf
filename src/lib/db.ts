@@ -307,6 +307,56 @@ export function traduireErreur(e: unknown): ErreurMetier {
   return new ErreurMetier("Une erreur est survenue. Réessayez dans un instant.", "CONFLIT");
 }
 
+/**
+ * État de la base, en lecture seule — utilisé par /api/sante après un
+ * déploiement. Répond à une question précise : « les migrations sont-elles
+ * réellement passées en production ? », sans avoir à gagner un cadeau pour
+ * le savoir (ce qui modifierait le stock et les statistiques).
+ *
+ * On ne renvoie que des faits de schéma, aucun secret.
+ */
+export async function etatSchema(): Promise<{
+  joignable: boolean;
+  version: number;
+  participantFacultatif: boolean | null;
+  gainAnonymeAutorise: boolean | null;
+}> {
+  try {
+    await sql`SELECT 1`;
+    const [v] = await sql`
+      SELECT COALESCE((SELECT valeur FROM parametres WHERE cle = 'schema_version'), '0') AS version
+    `;
+    const [colonne] = await sql`
+      SELECT is_nullable
+        FROM information_schema.columns
+       WHERE table_schema = 'public' AND table_name = 'tirages' AND column_name = 'participant_id'
+    `;
+    // Le garde-fou doit accepter un gain sans participant : on évalue la
+    // définition de la contrainte, sans jamais écrire de tirage.
+    const [contrainte] = await sql`
+      SELECT pg_get_constraintdef(oid) AS def
+        FROM pg_constraint
+       WHERE conname = 'tirages_gain_coherent'
+    `;
+    return {
+      joignable: true,
+      version: Number((v as { version?: string }).version ?? 0),
+      participantFacultatif:
+        colonne === undefined ? null : (colonne as { is_nullable: string }).is_nullable === "YES",
+      gainAnonymeAutorise: contrainte
+        ? !/p_participant_id/.test((contrainte as { def: string }).def)
+        : null,
+    };
+  } catch {
+    return {
+      joignable: false,
+      version: 0,
+      participantFacultatif: null,
+      gainAnonymeAutorise: null,
+    };
+  }
+}
+
 /** Vérifie que la base répond (utilisé par /api/sante et l'admin). */
 export async function baseDisponible(): Promise<boolean> {
   try {

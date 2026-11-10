@@ -26,8 +26,12 @@ import { Pool } from "pg";
 const url = process.env.DATABASE_URL;
 
 if (!url) {
+  // Message volontairement neutre sur l'hébergement : la même variable se
+  // renseigne en local (.env.local) et sur Vercel (Project → Settings →
+  // Environment Variables). Les pages continuent de répondre (repli propre)
+  // au lieu de faire échouer le build.
   console.warn(
-    "[db] DATABASE_URL absente. Copiez .env.example vers .env.local et renseignez l'URL Neon.",
+    "[db] DATABASE_URL absente : les données ne peuvent pas être lues. Renseignez la variable (Neon) puis redéployez.",
   );
 }
 

@@ -4,6 +4,13 @@
  * Confettis dorés (canvas-confetti chargé à la demande : 8 Ko, uniquement
  * quand on gagne — jamais sur l'écran de perte).
  */
+type InstanceConfettis = { reset: () => void };
+
+/** Instance courante, pour pouvoir couper court (voir `arreterConfettis`). */
+let courante: InstanceConfettis | null = null;
+/** Identifiant de la rafale en cours : invalide les boucles précédentes. */
+let generation = 0;
+
 export async function lancerConfettis(opts: { intense?: boolean } = {}): Promise<void> {
   if (typeof window === "undefined") return;
 
@@ -16,6 +23,8 @@ export async function lancerConfettis(opts: { intense?: boolean } = {}): Promise
     // décoraient l'écran mais passaient par-dessus le code et le QR, qui
     // devenaient illisibles. Le canvas est créé une seule fois.
     const confetti = charge.default.create(canvasConfettis(), { resize: true, useWorker: true });
+    courante = confetti as unknown as InstanceConfettis;
+    const identifiant = ++generation;
     const couleurs = ["#e8c66a", "#f8e7a8", "#fff3c4", "#a9822b", "#ffffff", "#7c1d2e"];
     const duree = opts.intense ? 3200 : 1800;
     const fin = Date.now() + duree;
@@ -33,7 +42,9 @@ export async function lancerConfettis(opts: { intense?: boolean } = {}): Promise
         origin: { x: 0.5, y: 0.62 },
         disableForReducedMotion: true,
       });
-      if (Date.now() < fin) requestAnimationFrame(tirer);
+      // `identifiant` : si les confettis ont été arrêtés entre-temps (popup
+      // fermée), la boucle s'arrête au lieu de repartir pour 3 secondes.
+      if (Date.now() < fin && identifiant === generation) requestAnimationFrame(tirer);
     };
     tirer();
 
@@ -60,6 +71,22 @@ export async function lancerConfettis(opts: { intense?: boolean } = {}): Promise
   } catch (e) {
     console.warn("[confettis] indisponible", e);
   }
+}
+
+/**
+ * Coupe immédiatement les confettis et efface le canvas.
+ *
+ * Indispensable sur le poste de la boutique : sans cela, les confettis du
+ * client précédent continuaient de tomber derrière la roue quand le client
+ * suivant se présentait. On remet donc l'écran à zéro à la fermeture de la
+ * popup.
+ */
+export function arreterConfettis(): void {
+  if (typeof window === "undefined") return;
+  generation += 1;
+  courante?.reset();
+  courante = null;
+  document.getElementById("canvas-confettis")?.remove();
 }
 
 /**

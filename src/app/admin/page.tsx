@@ -18,7 +18,7 @@ import { lireParametres } from "@/server/params";
 export const metadata = { title: "Tableau de bord" };
 
 /**
- * /admin — vue d'ensemble : joueurs, cadeaux gagnés/récupérés, stock restant,
+ * /admin — vue d'ensemble : tirages, cadeaux gagnés/récupérés, stock restant,
  * graphiques par jour, sources de trafic et performance par cadeau.
  */
 export default function PageAdmin() {
@@ -69,9 +69,7 @@ async function Contenu() {
         <Pastille ton="or">
           <CalendarClock className="size-3" /> Codes valables {parametres.dureeValiditeCodeJours} jours
         </Pastille>
-        <Pastille ton="neutre">
-          {parametres.toursMax} tour{parametres.toursMax > 1 ? "s" : ""} par personne
-        </Pastille>
+        <Pastille ton="neutre">Roue rejouable à volonté</Pastille>
         <Link href="/admin/reglages" className="text-[11.5px] text-cendre/60 underline underline-offset-2 hover:text-or">
           Modifier
         </Link>
@@ -81,9 +79,9 @@ async function Contenu() {
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <CarteChiffre
           icone={<Users className="size-4" />}
-          libelle="Joueurs"
-          valeur={formatNombre(stats.joueursTotal)}
-          detail={`+${stats.joueursAujourdhui} aujourd'hui`}
+          libelle="Tirages"
+          valeur={formatNombre(stats.tiragesTotal)}
+          detail={`+${stats.tiragesAujourdhui} aujourd'hui`}
         />
         <CarteChiffre
           icone={<Gift className="size-4" />}
@@ -178,14 +176,17 @@ async function Contenu() {
             {gagnants.map((g) => (
               <li key={g.id} className="flex items-center gap-2.5">
                 <span
-                  className="flex size-8 shrink-0 items-center justify-center rounded-full text-[11px] font-bold text-black/80"
+                  className="grid size-8 shrink-0 place-items-center rounded-full text-[13px]"
                   style={{ backgroundColor: g.couleur ?? "#e8c66a" }}
+                  aria-hidden
                 >
-                  {g.nom.slice(0, 1).toUpperCase()}
+                  🎁
                 </span>
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-[12.5px] font-medium text-creme">{g.nom}</p>
-                  <p className="truncate text-[11px] text-cendre/60">{g.cadeau_nom}</p>
+                  <p className="truncate text-[12.5px] font-medium text-creme">
+                    {g.cadeau_nom ?? "Cadeau"}
+                  </p>
+                  <p className="truncate text-[11px] text-cendre/60">Gagné en boutique</p>
                 </div>
                 <time className="shrink-0 text-[10px] text-cendre/45">
                   {formatHeure(g.created_at)}

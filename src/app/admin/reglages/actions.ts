@@ -12,11 +12,8 @@ import { journaliser } from "@/server/data";
 export type EtatReglages = { ok?: boolean; message?: string; erreur?: string };
 
 const schema = z.object({
-  toursMax: z.coerce.number().int().min(1).max(10),
   dureeValiditeCodeJours: z.coerce.number().int().min(1).max(365),
-  dureeSessionMinutes: z.coerce.number().int().min(15).max(720),
   reductionConsolation: z.coerce.number().int().min(0).max(100),
-  toursBonusParrainage: z.coerce.number().int().min(0).max(10),
   messagePerdu: z.string().trim().max(500),
   activeJeu: z.coerce.boolean(),
 });
@@ -32,11 +29,8 @@ export async function actionEnregistrerReglages(
   }
 
   const analyse = schema.safeParse({
-    toursMax: formData.get("toursMax"),
     dureeValiditeCodeJours: formData.get("dureeValiditeCodeJours"),
-    dureeSessionMinutes: formData.get("dureeSessionMinutes"),
     reductionConsolation: formData.get("reductionConsolation"),
-    toursBonusParrainage: formData.get("toursBonusParrainage"),
     messagePerdu: formData.get("messagePerdu"),
     activeJeu: formData.get("activeJeu") === "on",
   });
@@ -48,11 +42,8 @@ export async function actionEnregistrerReglages(
   const d = analyse.data;
   try {
     await Promise.all([
-      ecrireParametre("tours_max", String(d.toursMax)),
       ecrireParametre("duree_validite_code_jours", String(d.dureeValiditeCodeJours)),
-      ecrireParametre("duree_session_minutes", String(d.dureeSessionMinutes)),
       ecrireParametre("reduction_consolation", String(d.reductionConsolation)),
-      ecrireParametre("tours_bonus_parrainage", String(d.toursBonusParrainage)),
       ecrireParametre("message_perdu", d.messagePerdu || "Pas de chance cette fois !"),
       ecrireParametre("active_jeu", d.activeJeu ? "true" : "false"),
     ]);

@@ -4,8 +4,8 @@ import { TitreOr } from "@/components/ui/Base";
 export const metadata = { title: "Scan remise" };
 
 /**
- * /admin/scan — la vendeuse scanne le QR du client avec la caméra du téléphone
- * (ou saisit le code à la main) pour marquer le cadeau comme remis.
+ * /admin/scan — la vendeuse saisit (ou scanne le ticket de) le code remis au
+ * client pour marquer le cadeau comme remis.
  */
 export default function PageScan() {
   return (
@@ -16,7 +16,7 @@ export default function PageScan() {
           Scan remise de cadeau
         </TitreOr>
         <p className="mt-2 max-w-[65ch] text-[12.5px] leading-relaxed text-cendre/75">
-          Scannez le QR code du client (page résultat). Vérifiez le cadeau affiché puis validez :
+          Saisissez le code du ticket remis au client. Vérifiez le cadeau affiché puis validez :
           la remise est enregistrée et le code ne pourra plus être utilisé. Un code expiré ou déjà
           remis est refusé.
         </p>

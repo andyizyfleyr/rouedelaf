@@ -22,14 +22,12 @@ export function EcranBorne({
   url,
   nomBoutique,
   adresse,
-  source,
   initial,
 }: {
   qr: string;
   url: string;
   nomBoutique: string;
   adresse: string;
-  source: string;
   /** Premier état lu côté serveur : la borne affiche les vrais chiffres d'emblée. */
   initial: FluxBorne | null;
 }) {
@@ -206,11 +204,13 @@ export function EcranBorne({
                   <span
                     className="flex size-14 items-center justify-center rounded-full text-xl font-bold text-black/75"
                     style={{ backgroundColor: gagnant.couleur ?? "#e8c66a" }}
+                    aria-hidden
                   >
-                    {initiales(gagnant.nom)}
+                    🎁
                   </span>
-                  <p className="mt-2 font-titre text-lg font-semibold text-creme">{gagnant.nom}</p>
-                  <p className="text-[13px] text-or/85">{gagnant.cadeau_nom}</p>
+                  <p className="mt-2 font-titre text-lg font-semibold text-creme">
+                    {gagnant.cadeau_nom ?? "Cadeau"}
+                  </p>
                   <p className="mt-1 text-[10px] tracking-[0.16em] text-cendre/45 uppercase">
                     {formatDateHeure(gagnant.created_at)}
                   </p>
@@ -249,9 +249,9 @@ export function EcranBorne({
           <div className="mt-4 grid grid-cols-2 gap-2 border-t border-white/8 pt-3 text-center">
             <div>
               <p className="font-titre text-xl font-bold text-creme">
-                {formatNombre(flux?.totaux.joueurs ?? 0)}
+                {formatNombre(flux?.totaux.tirages ?? 0)}
               </p>
-              <p className="text-[9.5px] tracking-[0.14em] text-cendre/50 uppercase">Joueurs</p>
+              <p className="text-[9.5px] tracking-[0.14em] text-cendre/50 uppercase">Tirages</p>
             </div>
             <div>
               <p className="font-titre text-xl font-bold text-or-clair">
@@ -266,17 +266,9 @@ export function EcranBorne({
       </main>
 
       <footer className="mt-5 flex flex-wrap items-center justify-between gap-2 text-[10px] text-cendre/40">
-        <span>Une participation par numéro WhatsApp · Retrait en boutique uniquement</span>
-        <span className="font-mono">source: {source}</span>
+        <span>Jeu en boutique · Cadeau à retirer sur place</span>
       </footer>
     </div>
   );
 }
 
-function initiales(nom: string): string {
-  return nom
-    .split(/\s+/)
-    .slice(0, 2)
-    .map((m) => m.charAt(0).toUpperCase())
-    .join("");
-}

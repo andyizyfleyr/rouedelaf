@@ -138,7 +138,7 @@ export function ScannerCode() {
                 <ScanLine className="size-6 text-or" />
               </span>
               <p className="max-w-[34ch] text-[12.5px] leading-relaxed text-cendre/75">
-                Ouvrez la caméra et cadrez le QR code affiché sur le téléphone du client.
+                Ouvrez la caméra et cadrez le QR code du ticket remis au client.
               </p>
               <BoutonOr className="!w-auto !px-5 !py-2.5 text-[13px]" onClick={demarrerCamera}>
                 <Camera className="size-4" /> Ouvrir la caméra
@@ -255,13 +255,15 @@ export function ScannerCode() {
                 </span>
                 <div>
                   <p className="font-titre text-lg font-semibold text-creme">{apercu.cadeauNom}</p>
-                  <p className="text-[12.5px] text-cendre">pour {apercu.participantNom}</p>
+                  {apercu.participantNom && (
+                    <p className="text-[12.5px] text-cendre">pour {apercu.participantNom}</p>
+                  )}
                 </div>
               </div>
 
               <p className="mt-3 rounded-lg border border-white/8 bg-white/[0.03] px-3 py-2 text-[11.5px] text-cendre/70">
-                Vérifiez l&apos;identité du client puis remettez le cadeau. Cette action est
-                définitive et tracée.
+                Vérifiez le cadeau avec le client puis remettez-le. Cette action est définitive
+                et tracée.
               </p>
 
               <BoutonOr className="mt-4" disabled={chargement} onClick={confirmerRemise}>
@@ -290,7 +292,7 @@ export function ScannerCode() {
                 {apercu.raison === "introuvable" &&
                   "Aucun cadeau ne correspond à ce code. Vérifiez la saisie."}
                 {apercu.raison === "deja" &&
-                  `Le cadeau de ${apercu.participantNom ?? "ce client"} a déjà été retiré.`}
+                  "Ce cadeau a déjà été retiré."}
                 {apercu.raison === "expire" &&
                   "Le délai de retrait est dépassé. Voir avec le gérant pour une exception."}
                 {apercu.raison === "perdu" &&

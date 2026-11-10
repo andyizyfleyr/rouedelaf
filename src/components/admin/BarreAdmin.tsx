@@ -9,7 +9,6 @@ import {
   Menu,
   MonitorPlay,
   QrCode,
-  Users,
   X,
   LogOut,
   Settings2,
@@ -22,7 +21,6 @@ const LIENS = [
   { href: "/admin", libelle: "Tableau de bord", icone: BarChart3 },
   { href: "/admin/cadeaux", libelle: "Cadeaux", icone: Gift },
   { href: "/admin/scan", libelle: "Scan remise", icone: QrCode },
-  { href: "/admin/joueurs", libelle: "Joueurs", icone: Users },
   { href: "/admin/ecran", libelle: "Écran boutique", icone: MonitorPlay },
   { href: "/admin/qr", libelle: "QR à imprimer", icone: QrIcone },
   { href: "/admin/reglages", libelle: "Réglages", icone: Settings2 },
@@ -95,7 +93,7 @@ export function BarreAdmin() {
           <span className="text-xl">🎡</span>
           <div>
             <p className="font-titre text-[13px] font-semibold tracking-[0.12em] text-or-clair uppercase">
-              Roue de la fortune
+              Roue de Noël
             </p>
             <p className="text-[10px] tracking-[0.18em] text-cendre/60 uppercase">
               Administration
@@ -105,11 +103,11 @@ export function BarreAdmin() {
         {liens}
         <div className="mt-auto px-2 pt-4">
           <Link
-            href="/jouer"
+            href="/roue"
             target="_blank"
             className="text-[11px] text-cendre/50 underline-offset-2 hover:text-or/80 hover:underline"
           >
-            Ouvrir l&apos;espace client ↗
+            Ouvrir la roue ↗
           </Link>
         </div>
       </aside>

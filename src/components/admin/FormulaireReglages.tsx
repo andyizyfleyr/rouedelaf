@@ -50,36 +50,12 @@ export function FormulaireReglages({
 
           <div className="grid gap-3 sm:grid-cols-2">
             <Champ
-              name="toursMax"
-              libelle="Tours par participant"
-              valeur={parametres.toursMax}
-              min={1}
-              max={10}
-              aide="1 = une seule participation par numéro"
-            />
-            <Champ
-              name="toursBonusParrainage"
-              libelle="Tours bonus (parrainage)"
-              valeur={parametres.toursBonusParrainage}
-              min={0}
-              max={10}
-              aide="Accordés quand un ami s'inscrit avec le lien"
-            />
-            <Champ
               name="dureeValiditeCodeJours"
               libelle="Validité du code cadeau (jours)"
               valeur={parametres.dureeValiditeCodeJours}
               min={1}
               max={365}
               aide="Délai de retrait en boutique"
-            />
-            <Champ
-              name="dureeSessionMinutes"
-              libelle="Durée de session (minutes)"
-              valeur={parametres.dureeSessionMinutes}
-              min={15}
-              max={720}
-              aide="Temps pour finir de jouer après vérification"
             />
             <Champ
               name="reductionConsolation"

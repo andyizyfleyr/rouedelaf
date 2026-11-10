@@ -31,7 +31,7 @@ export async function GET() {
       {
         gagnants,
         totaux: {
-          joueurs: stats.joueursTotal,
+          tirages: stats.tiragesTotal,
           gagnes: stats.gagnesTotal,
           recuperes: stats.recuperesTotal,
         },
@@ -44,7 +44,7 @@ export async function GET() {
     // on renvoie un état vide exploitable par le client + le détail en log.
     console.error("[ecran] lecture impossible", e);
     return NextResponse.json(
-      { gagnants: [], totaux: { joueurs: 0, gagnes: 0, recuperes: 0 }, horodatage: new Date().toISOString() },
+      { gagnants: [], totaux: { tirages: 0, gagnes: 0, recuperes: 0 }, horodatage: new Date().toISOString() },
       { status: 200, headers: { "Cache-Control": "no-store" } },
     );
   }

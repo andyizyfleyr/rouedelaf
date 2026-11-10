@@ -49,23 +49,28 @@ DECLARE
   v_deja       integer;
   v_bloque     boolean;
 BEGIN
-  SELECT tours_bonus, bloque INTO v_bonus, v_bloque
-    FROM participants
-   WHERE id = p_participant_id
-   FOR UPDATE;
+  -- Participant FACULTATIF (migration M4) : sur le poste de la boutique, le
+  -- tirage est anonyme (p_participant_id NULL) et le nombre de tours n'est
+  -- plus limité — seule la limite de stock s'applique.
+  IF p_participant_id IS NOT NULL THEN
+    SELECT tours_bonus, bloque INTO v_bonus, v_bloque
+      FROM participants
+     WHERE id = p_participant_id
+     FOR UPDATE;
 
-  IF NOT FOUND THEN
-    RAISE EXCEPTION 'PARTICIPANT_INTROUVABLE' USING ERRCODE = 'P0001';
-  END IF;
-  IF v_bloque THEN
-    RAISE EXCEPTION 'PARTICIPANT_BLOQUE' USING ERRCODE = 'P0001';
-  END IF;
+    IF NOT FOUND THEN
+      RAISE EXCEPTION 'PARTICIPANT_INTROUVABLE' USING ERRCODE = 'P0001';
+    END IF;
+    IF v_bloque THEN
+      RAISE EXCEPTION 'PARTICIPANT_BLOQUE' USING ERRCODE = 'P0001';
+    END IF;
 
-  v_tours_max := param_int('tours_max', 1);
-  SELECT count(*)::int INTO v_deja FROM tirages WHERE participant_id = p_participant_id;
+    v_tours_max := param_int('tours_max', 1);
+    SELECT count(*)::int INTO v_deja FROM tirages WHERE participant_id = p_participant_id;
 
-  IF v_deja >= v_tours_max + COALESCE(v_bonus, 0) THEN
-    RAISE EXCEPTION 'TOURS_EPUISES' USING ERRCODE = 'P0001';
+    IF v_deja >= v_tours_max + COALESCE(v_bonus, 0) THEN
+      RAISE EXCEPTION 'TOURS_EPUISES' USING ERRCODE = 'P0001';
+    END IF;
   END IF;
 
   IF p_cadeau_id IS NOT NULL THEN
@@ -90,7 +95,10 @@ BEGIN
     LOOP
       v_try := v_try + 1;
       v_code := 'ROUE-' ||
-        upper(substr(md5(random()::text || clock_timestamp()::text || p_participant_id::text), 1, 4)) ||
+        -- `coalesce` : sans participant (tirage anonyme de la boutique),
+        -- concaténer NULL rendait TOUT le code NULL et violait la contrainte
+        -- « un gain a forcément un code ».
+        upper(substr(md5(random()::text || clock_timestamp()::text || coalesce(p_participant_id::text, '')), 1, 4)) ||
         '-' ||
         upper(
           substr(v_alphabet, 1 + floor(random() * 8)::int, 1) ||
@@ -185,3 +193,19 @@ BEGIN
      WHERE nom = 'Bon café offert' AND couleur IN ('#4A3F35');
   END IF;
 END $$;
+
+-- ----------------------------------------------------------------------------
+--  M4. Le jeu tourne sur le poste de la boutique, sans inscription
+--
+--  Décision de l'exploitant : les clients jouent sur l'ordinateur de la
+--  boutique, l'un après l'autre. Il n'y a donc plus ni nom, ni numéro
+--  WhatsApp, ni compte : un tirage n'est plus rattaché à un participant.
+--
+--  `tirages.participant_id` devient donc FACULTATIF. On ne supprime pas la
+--  colonne ni les participants déjà en base : l'historique des anciennes
+--  participations (et les exports) restent lisibles.
+--
+--  Attention : la règle « un tour par personne » disparaît avec le compte.
+--  La limite devient celle du stock, géré dans /admin/cadeaux.
+-- ----------------------------------------------------------------------------
+ALTER TABLE tirages ALTER COLUMN participant_id DROP NOT NULL;

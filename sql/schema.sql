@@ -86,7 +86,7 @@ CREATE TABLE IF NOT EXISTS cadeaux (
   image_url    text,
   stock        integer NOT NULL DEFAULT 0,
   probabilite  numeric(6,2) NOT NULL DEFAULT 0,
-  couleur      text NOT NULL DEFAULT '#C9A227',
+  couleur      text NOT NULL DEFAULT '#D4A017',
   icone        text NOT NULL DEFAULT '🎁',     -- emoji affiché sur la roue
   actif        boolean NOT NULL DEFAULT true,
   ordre        integer NOT NULL DEFAULT 0,     -- ordre d'affichage sur la roue
@@ -106,7 +106,9 @@ COMMENT ON TABLE cadeaux IS 'Catalogue des lots. probabilite = poids relatif en 
 -- ----------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS tirages (
   id             bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-  participant_id bigint NOT NULL REFERENCES participants(id) ON DELETE CASCADE,
+  -- NULL = tirage joué sur le poste de la boutique, sans compte client
+  -- (voir migration M4 : le jeu n'a plus d'inscription).
+  participant_id bigint REFERENCES participants(id) ON DELETE CASCADE,
   cadeau_id      bigint REFERENCES cadeaux(id) ON DELETE RESTRICT,
   code_unique    text UNIQUE,                  -- code lisible ex. ROUE-7F3K-92QP
   statut         text NOT NULL,
@@ -296,27 +298,34 @@ DECLARE
   v_bloque     boolean;
 BEGIN
   -- 0) VERROU SUR LE PARTICIPANT + VÉRIFICATION DU DROIT DE JOUER.
-  --    C'est ici, et pas dans Node, que « un tour par personne » est garanti :
-  --    deux onglets (ou deux clics très rapprochés) arrivent en parallèle sur
-  --    ce même verrou et sont sérialisés. Le second voit le tirage du premier
-  --    et repart avec une erreur TOURS_EPUISES au lieu d'un deuxième cadeau.
-  SELECT tours_bonus, bloque INTO v_bonus, v_bloque
-    FROM participants
-   WHERE id = p_participant_id
-   FOR UPDATE;
+  --
+  --    Depuis la migration M4, le jeu tourne sur le poste de la boutique :
+  --    un tirage peut être anonyme (p_participant_id NULL) et il n'y a alors
+  --    AUCUNE limite de tours — la limite, c'est le stock des cadeaux.
+  --
+  --    Quand un participant EST fourni (anciennes participations, ou jeu à
+  --    distance), « un tour par personne » reste garanti ici, et pas dans
+  --    Node : deux onglets arrivent en parallèle sur ce même verrou et sont
+  --    sérialisés, le second reçoit TOURS_EPUISES.
+  IF p_participant_id IS NOT NULL THEN
+    SELECT tours_bonus, bloque INTO v_bonus, v_bloque
+      FROM participants
+     WHERE id = p_participant_id
+     FOR UPDATE;
 
-  IF NOT FOUND THEN
-    RAISE EXCEPTION 'PARTICIPANT_INTROUVABLE' USING ERRCODE = 'P0001';
-  END IF;
-  IF v_bloque THEN
-    RAISE EXCEPTION 'PARTICIPANT_BLOQUE' USING ERRCODE = 'P0001';
-  END IF;
+    IF NOT FOUND THEN
+      RAISE EXCEPTION 'PARTICIPANT_INTROUVABLE' USING ERRCODE = 'P0001';
+    END IF;
+    IF v_bloque THEN
+      RAISE EXCEPTION 'PARTICIPANT_BLOQUE' USING ERRCODE = 'P0001';
+    END IF;
 
-  v_tours_max := param_int('tours_max', 1);
-  SELECT count(*)::int INTO v_deja FROM tirages WHERE participant_id = p_participant_id;
+    v_tours_max := param_int('tours_max', 1);
+    SELECT count(*)::int INTO v_deja FROM tirages WHERE participant_id = p_participant_id;
 
-  IF v_deja >= v_tours_max + COALESCE(v_bonus, 0) THEN
-    RAISE EXCEPTION 'TOURS_EPUISES' USING ERRCODE = 'P0001';
+    IF v_deja >= v_tours_max + COALESCE(v_bonus, 0) THEN
+      RAISE EXCEPTION 'TOURS_EPUISES' USING ERRCODE = 'P0001';
+    END IF;
   END IF;
 
   -- 1) Verrou pessimiste sur la ligne du cadeau : deux joueurs simultanés
@@ -344,7 +353,10 @@ BEGIN
     LOOP
       v_try := v_try + 1;
       v_code := 'ROUE-' ||
-        upper(substr(md5(random()::text || clock_timestamp()::text || p_participant_id::text), 1, 4)) ||
+        -- `coalesce` : sans participant (tirage anonyme de la boutique),
+        -- concaténer NULL rendait TOUT le code NULL et violait la contrainte
+        -- « un gain a forcément un code ».
+        upper(substr(md5(random()::text || clock_timestamp()::text || coalesce(p_participant_id::text, '')), 1, 4)) ||
         '-' ||
         upper(
           substr(v_alphabet, 1 + floor(random() * 8)::int, 1) ||

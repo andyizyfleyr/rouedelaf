@@ -18,6 +18,7 @@ import { lireParametres } from "@/server/params";
 export type ApercuCode = {
   ok: boolean;
   raison?: "introuvable" | "deja" | "expire" | "perdu" | "auth";
+  /** Nom du client — absent depuis que les tirages sont anonymes. */
   participantNom?: string;
   cadeauNom?: string;
   expireLe?: string;
@@ -37,12 +38,12 @@ export async function chercherCode(brut: string): Promise<ApercuCode> {
   const tirage = await tirageParCode(code);
   if (!tirage) return { ok: false, raison: "introuvable" };
   if (tirage.statut !== "gagne") return { ok: false, raison: "perdu" };
-  if (tirage.recupere) return { ok: false, raison: "deja", participantNom: tirage.participant_nom, cadeauNom: tirage.cadeau_nom ?? undefined };
+  if (tirage.recupere) return { ok: false, raison: "deja", participantNom: tirage.participant_nom ?? undefined, cadeauNom: tirage.cadeau_nom ?? undefined };
   if (new Date(tirage.expire_le).getTime() < Date.now()) {
     return {
       ok: false,
       raison: "expire",
-      participantNom: tirage.participant_nom,
+      participantNom: tirage.participant_nom ?? undefined,
       cadeauNom: tirage.cadeau_nom ?? undefined,
       expireLe: tirage.expire_le,
     };
@@ -50,7 +51,7 @@ export async function chercherCode(brut: string): Promise<ApercuCode> {
 
   return {
     ok: true,
-    participantNom: tirage.participant_nom,
+    participantNom: tirage.participant_nom ?? undefined,
     cadeauNom: tirage.cadeau_nom ?? undefined,
     expireLe: tirage.expire_le,
   };
@@ -90,7 +91,8 @@ export async function validerRemise(brut: string): Promise<ResultatRemise> {
   const parametres = await lireParametres();
   return {
     ok: true,
-    message: `${resultat.cadeauNom} remis à ${resultat.participantNom}. Validité du code : ${parametres.dureeValiditeCodeJours} jours.`,
+    // Plus de nom à annoncer (tirage anonyme) : on confirme le cadeau remis.
+    message: `${resultat.cadeauNom} remis. Validité du code : ${parametres.dureeValiditeCodeJours} jours.`,
   };
 }
 

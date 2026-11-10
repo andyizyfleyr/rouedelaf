@@ -1,67 +1,33 @@
 import { NextResponse } from "next/server";
 
 import { ErreurMetier, traduireErreur } from "@/lib/db";
-import { verifierLimite, prendreVerrou, libererVerrou } from "@/lib/rate-limit";
-import { lireSessionJeu } from "@/lib/session";
-import { listeTiragesParticipant } from "@/server/data";
+import { prendreVerrou, libererVerrou } from "@/lib/rate-limit";
 import { empreinteAppareil, hasherIp, lireIp } from "@/server/contexte";
 import { effectuerTirage } from "@/server/tirage";
 
 /**
- * GET /api/tirage — tous les tirages du joueur connecté (« mes cadeaux »).
- *
- * Sert à ne perdre aucun gain : un participant peut gagner plusieurs cadeaux
- * (parrainage, tours offerts) et doit pouvoir rouvrir CHACUN d'eux. Avant,
- * seul le dernier était accessible.
- */
-export async function GET() {
-  const session = await lireSessionJeu();
-  if (!session) {
-    return NextResponse.json({ erreur: "Session expirée." }, { status: 401 });
-  }
-  const tirages = await listeTiragesParticipant(session.participantId);
-  return NextResponse.json({ tirages }, { headers: { "Cache-Control": "no-store" } });
-}
-
-/**
  * POST /api/tirage — LE TIRAGE (décision serveur uniquement)
  *
- * Réponse :
- *   { tirageId, statut, caseIndex, nombreCases, cadeau, code, expireLe }
+ * Réponse : { tirageId, statut, caseIndex, nombreCases, cadeau, code, expireLe }
  *
- * Sécurité :
- *  - session de jeu obligatoire (cookie httpOnly signé, vérifié en base) ;
- *  - verrou anti double-clic (Upstash, 15 s) ;
- *  - limite par IP et par appareil ;
- *  - le tirage est enregistré AVANT l'animation.
+ * Ce que ce tour N'EST PAS : une partie de compte. Le jeu tourne sur le poste
+ * de la boutique, ouvert à qui se présente — pas de cookie de session, pas de
+ * participant, pas de « tours restants ». Conséquence directe : un même poste
+ * peut enchaîner les clients, et un rechargement de page ne ressuscite jamais
+ * la partie précédente.
+ *
+ * Ce qui protège malgré tout le stock :
+ *  - verrou anti double-clic (un seul tirage à la fois sur le poste) ;
+ *  - enregistrement ATOMIQUE en base (décrément conditionnel du stock) ;
+ *  - réglage « Jeu ouvert » côté administration.
  */
 export async function POST(request: Request) {
-  const session = await lireSessionJeu();
-  if (!session) {
-    return NextResponse.json(
-      { erreur: "Votre session a expiré. Rechargez la page.", code: "SESSION" },
-      { status: 401 },
-    );
-  }
-
   const ipHash = hasherIp(lireIp(request));
   const appareil = empreinteAppareil(request);
 
-  // Limites : IP (12 / 10 min) et appareil (6 / 10 min).
-  const limiteIp = await verifierLimite("tirage", `ip:${ipHash}`);
-  const limiteAppareil = await verifierLimite("tirage", `dev:${appareil}`);
-  if (!limiteIp.ok || !limiteAppareil.ok) {
-    return NextResponse.json(
-      {
-        erreur: "Trop de tirages depuis cet appareil. Réessayez plus tard.",
-        code: "LIMITE",
-      },
-      { status: 429 },
-    );
-  }
-
-  // Verrou anti double-clic (un seul tirage à la fois par participant).
-  const cleVerrou = `tirage:${session.participantId}`;
+  // Verrou anti double-clic : un seul tirage à la fois sur le poste. Sans
+  // limite de tours, c'est la seule barrière contre deux clics simultanés.
+  const cleVerrou = `tirage:poste`;
   const verrou = await prendreVerrou(cleVerrou, 20);
   if (!verrou) {
     return NextResponse.json(
@@ -71,10 +37,7 @@ export async function POST(request: Request) {
   }
 
   try {
-    const resultat = await effectuerTirage(session.participantId, {
-      appareil,
-      ipHash,
-    });
+    const resultat = await effectuerTirage({ appareil, ipHash });
 
     return NextResponse.json(resultat, {
       headers: { "Cache-Control": "no-store" },

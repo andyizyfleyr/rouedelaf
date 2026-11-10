@@ -286,17 +286,21 @@ function CarteCadeau({
 /*  Panneau latéral : création / édition                                     */
 /* -------------------------------------------------------------------------- */
 const ICONES = ["🎁", "🎟️", "🧢", "🛍️", "🧴", "🖊️", "🌸", "💸", "☕", "🍫", "📱", "👕", "👟", "💄", "🌟"];
+/**
+ * Palette de Noël proposée dans le sélecteur : les teintes de la roue
+ * (voir `globals.css` et `sql/seed.sql`). Les anciennes pastilles « velours »
+ * (bleu, violet, sarcelle) juraient au milieu des lots de fête.
+ */
 const COULEURS = [
-  "#C9A227",
-  "#8B1E3F",
-  "#1F6F5C",
-  "#B4552A",
-  "#3A4A7A",
-  "#6B4A7A",
-  "#0F6B6B",
-  "#A52A3F",
-  "#4A3F35",
-  "#2C6E49",
+  "#D4A017",
+  "#B3121F",
+  "#1F7A50",
+  "#8E0C17",
+  "#2F7A53",
+  "#A9822B",
+  "#C41E2A",
+  "#16402E",
+  "#5A0E16",
 ];
 
 function PanneauFormulaire({
@@ -390,7 +394,7 @@ function PanneauFormulaire({
               rows={2}
               defaultValue={cadeau?.description ?? ""}
               className="champ resize-none"
-              placeholder="Détail affiché sur la page résultat"
+              placeholder="Détail du cadeau (ex. valable 30 jours)"
             />
           </div>
 

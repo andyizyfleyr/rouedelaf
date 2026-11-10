@@ -1,14 +1,9 @@
 import { Suspense } from "react";
-import { redirect } from "next/navigation";
 
 import { EcranRoue } from "@/components/client/EcranRoue";
 import { construireCases } from "@/lib/roue";
-import { lireSessionJeu } from "@/lib/session";
-import { chargerCadeauxRoue, toursRestants } from "@/server/tirage";
-import { listeTiragesParticipant } from "@/server/data";
+import { chargerCadeauxRoue } from "@/server/tirage";
 import { lireParametres } from "@/server/params";
-import { boutique } from "@/lib/env";
-import QRCode from "qrcode";
 
 export const metadata = {
   title: "La roue",
@@ -16,15 +11,15 @@ export const metadata = {
 };
 
 /**
- * /roue — la roue tourne, le résultat vient du serveur.
+ * /roue — la roue, rien d'autre.
  *
- * La page est un composant serveur :
- *  - elle vérifie la session de jeu ;
- *  - elle charge les lots et calcule la roue (même fonction que le serveur
- *    de tirage, pour que l'index annoncé corresponde exactement) ;
- *  - elle transmet la liste des cases au composant client.
+ * Le jeu tourne sur le POSTE DE LA BOUTIQUE : pas d'inscription, pas de
+ * session, pas de nom. Le client arrive sur la roue, appuie sur le moyeu, voit
+ * son cadeau, ferme la popup — et le client suivant peut jouer immédiatement.
  *
- * Le tirage lui-même est déclenché par POST /api/tirage.
+ * La page est donc volontairement SANS état côté serveur : elle ne charge que
+ * les cases de la roue et les réglages. Tout le reste (le tirage) passe par
+ * POST /api/tirage, qui ne dépend d'aucun cookie.
  */
 export default function PageRoue() {
   return (
@@ -44,33 +39,7 @@ function SqueletteRoue() {
 }
 
 async function Contenu() {
-  const session = await lireSessionJeu();
-  if (!session) redirect("/jouer");
-
-  const restants = await toursRestants(session.participantId);
-
   const parametres = await lireParametres();
-
-  // Tous les tirages du joueur (pas seulement le dernier) : dès qu'un second
-  // cadeau est gagné (parrainage, tours offerts), le premier doit rester
-  // consultable. Avant, seul le dernier était affiché et l'autre bon devenait
-  // invisible alors qu'il restait valide en boutique.
-  const tiragesInitiaux = await listeTiragesParticipant(session.participantId);
-  const messagePerdu = parametres.messagePerdu;
-
-  // QR du dernier gain, généré côté serveur : il s'affiche même si le client
-  // n'a pas de connexion stable au moment d'ouvrir la popup.
-  let qrInitial: string | null = null;
-  const dernierGagne = tiragesInitiaux.find((t) => t.statut === "gagne" && t.code_unique);
-  if (dernierGagne?.code_unique) {
-    qrInitial = await QRCode.toDataURL(dernierGagne.code_unique, {
-      errorCorrectionLevel: "M",
-      margin: 1,
-      width: 420,
-      color: { dark: "#0a0908", light: "#f8e7a8" },
-    });
-  }
-
   const cadeaux = await chargerCadeauxRoue();
   const cases = construireCases(
     cadeaux.map((c) => ({
@@ -90,13 +59,8 @@ async function Contenu() {
        de boutique, ni bouton. Le lancement passe par le moyeu « ROUE ». */
     <EcranRoue
       cases={cases}
-      toursRestants={restants}
       jeuOuvert={parametres.activeJeu}
       lotsDisponibles={cadeaux.some((c) => Number(c.stock) > 0 && Number(c.probabilite) > 0)}
-      tiragesInitiaux={tiragesInitiaux}
-      qrInitial={qrInitial}
-      messagePerdu={messagePerdu}
-      boutique={{ nom: boutique.nom, adresse: boutique.adresse, whatsapp: boutique.whatsapp }}
     />
   );
 }

@@ -1,93 +1,29 @@
 import "server-only";
 
-import { createHash, randomBytes } from "node:crypto";
-
 import { SignJWT, jwtVerify } from "jose";
 import { cookies } from "next/headers";
 
 import { env } from "./env";
 
 /**
- * Sessions signées (JWT courte durée) stockées dans un cookie httpOnly.
+ * Session signée (JWT courte durée) stockée dans un cookie httpOnly.
  *
- * Deux sessions distinctes :
- *  - « roue_session »  : session de JEU du client (participant inscrit)
- *  - « roue_admin »    : session de l'ADMIN (mot de passe partagé boutique)
+ * Il n'en reste qu'UNE : « roue_admin », la session de l'ADMIN (mot de passe
+ * partagé boutique). La session de jeu a disparu avec l'inscription — les
+ * clients jouent sur le poste de la boutique, sans compte, donc sans cookie.
  *
  * Le JWT est signé avec ADMIN_SESSION_SECRET : impossible à forger côté client.
- * En base, `sessions_jeu.token_hash` permet de révoquer une session.
  */
 
-const COOKIE_JEU = "roue_session";
 const COOKIE_ADMIN = "roue_admin";
 
 const secret = () => new TextEncoder().encode(env.sessionSecret);
-
-export type PayloadJeu = {
-  participantId: number;
-  nom: string;
-  telephone: string;
-  /** Identifiant de session en base (révocation possible). */
-  sid: string;
-};
 
 export type PayloadAdmin = {
   role: "admin";
   /** Identifiant de la vendeuse (facultatif). */
   nom?: string;
 };
-
-/* -------------------------------------------------------------------------- */
-/*  Session de jeu                                                             */
-/* -------------------------------------------------------------------------- */
-
-export async function creerSessionJeu(payload: PayloadJeu): Promise<void> {
-  const token = await new SignJWT({ ...payload })
-    .setProtectedHeader({ alg: "HS256" })
-    .setIssuedAt()
-    .setExpirationTime("4h")
-    .sign(secret());
-
-  const jar = await cookies();
-  jar.set(COOKIE_JEU, token, {
-    httpOnly: true,
-    sameSite: "lax",
-    secure: env.isProduction,
-    path: "/",
-    maxAge: 60 * 60 * 4,
-  });
-}
-
-export async function lireSessionJeu(): Promise<PayloadJeu | null> {
-  const jar = await cookies();
-  const token = jar.get(COOKIE_JEU)?.value;
-  if (!token) return null;
-  try {
-    const { payload } = await jwtVerify(token, secret(), { algorithms: ["HS256"] });
-    return {
-      participantId: Number(payload.participantId),
-      nom: String(payload.nom ?? ""),
-      telephone: String(payload.telephone ?? ""),
-      sid: String(payload.sid ?? ""),
-    };
-  } catch {
-    return null;
-  }
-}
-
-export async function supprimerSessionJeu(): Promise<void> {
-  const jar = await cookies();
-  jar.delete(COOKIE_JEU);
-}
-
-/** Hash du token de session stocké en base (révocation). */
-export function hacherToken(token: string): string {
-  return createHash("sha256").update(token).digest("hex");
-}
-
-export function nouveauTokenSession(): string {
-  return randomBytes(32).toString("base64url");
-}
 
 /* -------------------------------------------------------------------------- */
 /*  Session admin                                                              */

@@ -8,7 +8,6 @@ import { tirerGagnant } from "@/lib/tirage-serveur";
 import type { CadeauRoue, ResultatTirageApi } from "@/lib/types";
 
 import { lireParametres } from "./params";
-import QRCode from "qrcode";
 
 /**
  * ══════════════════════════════════════════════════════════════════════════
@@ -17,9 +16,9 @@ import QRCode from "qrcode";
  *
  * Règles appliquées ici, dans cet ordre :
  *
- *  1. Le jeu doit être ouvert (`active_jeu`) et le participant non bloqué.
- *  2. Le participant doit avoir des tours restants (tours_max + bonus parrainage
- *     - tirages déjà effectués).
+ *  1. Le jeu doit être ouvert (`active_jeu`).
+ *  2. Aucune limite de tours : le poste de la boutique doit pouvoir enchaîner
+ *     les clients (la limite réelle, c'est le stock).
  *  3. On charge les lots actifs avec stock > 0.
  *  4. Le gagnant est choisi avec `crypto.randomInt` selon les poids, en
  *     ignorant les lots à stock 0.
@@ -58,28 +57,6 @@ export async function chargerCadeauxRoue(): Promise<CadeauDb[]> {
   return lignes as CadeauDb[];
 }
 
-/** Nombre de tirages déjà effectués par un participant. */
-export async function compterTirages(participantId: number): Promise<number> {
-  const [ligne] = await sql`
-    SELECT count(*)::int AS n FROM tirages WHERE participant_id = ${participantId}
-  `;
-  return Number(ligne?.n ?? 0);
-}
-
-/** Tours restants (base + bonus - consommés). */
-export async function toursRestants(participantId: number): Promise<number> {
-  const parametres = await lireParametres();
-  const [p] = await sql`
-    SELECT tours_bonus, bloque FROM participants WHERE id = ${participantId}
-  `;
-  if (!p) throw new ErreurMetier("Participant introuvable", "NON_TROUVE");
-  if (p.bloque) throw new ErreurMetier("Ce compte est bloqué.", "BLOQUE");
-
-  const autorises = parametres.toursMax + Number(p.tours_bonus ?? 0);
-  const utilises = await compterTirages(participantId);
-  return Math.max(autorises - utilises, 0);
-}
-
 /**
  * Choisit un index de case sur la roue AFFICHÉE pour un cadeau donné.
  * La roue affichée est reconstruite avec `construireCases` — la même fonction
@@ -100,35 +77,28 @@ export function indexDeLaCase(
 }
 
 /**
- * Effectue un tirage complet pour un participant.
+ * Effectue un tirage complet.
  *
- * @param participantId participant vérifié (session)
- * @param contexte      empreinte appareil / hash IP (anti-abus, journal)
+ * Le jeu tourne sur le POSTE DE LA BOUTIQUE : le client ne s'inscrit pas, ne
+ * saisit ni nom ni numéro, et peut jouer autant de fois qu'il veut. Un tirage
+ * n'est donc rattaché à aucun participant (`participant_id = NULL`), et la
+ * seule limite est le stock des cadeaux.
+ *
+ * Conséquence assumée par l'exploitant : il n'y a plus de « un tour par
+ * numéro ». La vendeuse garde la main via le réglage « Jeu ouvert » et le
+ * stock de chaque lot.
+ *
+ * @param contexte empreinte appareil / hash IP (anti-abus, journal)
  */
-export async function effectuerTirage(
-  participantId: number,
-  contexte: { appareil: string | null; ipHash: string | null },
-): Promise<ResultatTirageApi> {
+export async function effectuerTirage(contexte: {
+  appareil: string | null;
+  ipHash: string | null;
+}): Promise<ResultatTirageApi> {
   const parametres = await lireParametres();
 
   if (!parametres.activeJeu) {
     throw new ErreurMetier("Le jeu est momentanément fermé. Revenez bientôt !", "CONFLIT");
   }
-
-  // 1) Droits à jouer
-  const restants = await toursRestants(participantId);
-  if (restants <= 0) {
-    throw new ErreurMetier(
-      "Vous avez déjà utilisé tous vos tours. Partagez à un ami pour en gagner un de plus !",
-      "CONFLIT",
-    );
-  }
-
-  // 2) Ce tirage est-il un tour BONUS (gagné via parrainage) ?
-  //    Il l'est si le nombre de tours déjà consommés dépasse les tours de base
-  //    offerts à chaque participant.
-  const dejaJoues = await compterTirages(participantId);
-  const estBonus = dejaJoues >= parametres.toursMax;
 
   const cadeaux = await chargerCadeauxRoue();
   const cases = construireCases(
@@ -177,10 +147,10 @@ export async function effectuerTirage(
       // 4) Enregistrement atomique en base (verrou stock + code unique).
       const [resultat] = await sql`
         SELECT * FROM enregistrer_tirage(
-          ${participantId},
+          ${null}::bigint,
           ${cadeauId}::bigint,
           ${parametres.dureeValiditeCodeJours}::integer,
-          ${estBonus}::boolean,
+          false::boolean,
           ${contexte.appareil}::text,
           ${contexte.ipHash}::text
         )
@@ -189,18 +159,11 @@ export async function effectuerTirage(
       const caseIndex = indexDeLaCase(cases, cadeauId);
       const cadeau = cadeaux.find((c) => Number(c.id) === cadeauId) ?? null;
 
-      // QR du code cadeau, généré ICI : la popup peut l'afficher sans
-      // aller-retour réseau supplémentaire, même en 3G capricieuse.
+      // Le code de retrait et son QR ne sont plus affichés au client : la
+      // popup ne montre que « Félicitations » et le cadeau, et la remise se
+      // fait à la caisse. On cesse donc de les générer pour un tirage anonyme
+      // (une image de QR coûtait ~50 ms de CPU par tour sur le poste).
       const codeUnique = resultat.code_unique ? String(resultat.code_unique) : null;
-      const qrDataUrl =
-        codeUnique && resultat.statut === "gagne"
-          ? await QRCode.toDataURL(codeUnique, {
-              errorCorrectionLevel: "M",
-              margin: 1,
-              width: 420,
-              color: { dark: "#0a0908", light: "#f8e7a8" },
-            })
-          : null;
 
       return {
         tirageId: Number(resultat.tirage_id),
@@ -208,21 +171,27 @@ export async function effectuerTirage(
         caseIndex,
         nombreCases: cases.length,
         cadeau: cadeau
-          ? { id: Number(cadeau.id), nom: cadeau.nom, couleur: cadeau.couleur, icone: cadeau.icone }
+          ? {
+              id: Number(cadeau.id),
+              nom: cadeau.nom,
+              couleur: cadeau.couleur,
+              icone: cadeau.icone,
+              image_url: cadeau.image_url,
+            }
           : null,
         code: codeUnique,
-        qrDataUrl,
+        qrDataUrl: null,
         expireLe: resultat.expire_le ? new Date(resultat.expire_le as string).toISOString() : null,
         reductionConsolation: resultat.statut === "perdu" ? parametres.reductionConsolation : null,
       };
     } catch (e) {
       const traduit = traduireErreur(e);
       // La base a refusé : soit le lot vient d'être épuisé (on retente), soit
-      // le participant n'a plus de tour (deux onglets, clic double) ou est
-      // bloqué : dans ces cas on remonte l'erreur telle quelle.
+      // le jeu vient d'être fermé depuis l'administration : dans ces cas on
+      // remonte l'erreur telle quelle.
       if (traduit.code !== "CADEAU_INDISPONIBLE") throw traduit;
-      // Le lot vient d'être épuisé par un autre joueur : on retire ce lot du
-      // stock local et on retente immédiatement (sans afficher d'erreur).
+      // Le lot vient d'être épuisé : on retire ce lot du stock local et on
+      // retente immédiatement (sans afficher d'erreur).
       dernierEchec = e;
       const epuise = cadeaux.find((c) => Number(c.id) === cadeauId);
       if (epuise) epuise.stock = 0;

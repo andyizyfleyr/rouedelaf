@@ -11,24 +11,26 @@ import { sql } from "@/lib/db";
  */
 
 export type Parametres = {
-  toursMax: number;
   dureeValiditeCodeJours: number;
-  dureeSessionMinutes: number;
   activeJeu: boolean;
   messagePerdu: string;
   reductionConsolation: number;
-  toursBonusParrainage: number;
 };
 
+/**
+ * Réglages par défaut.
+ *
+ * `tours_max`, `tours_bonus_parrainage` et `duree_session_minutes` ont
+ * disparu avec l'inscription : sur le poste de la boutique, il n'y a ni compte
+ * ni limite de tours. Les lignes correspondantes restent en base (elles ne
+ * gênent personne) mais ne sont plus lues.
+ */
 const DEFAUTS: Parametres = {
-  toursMax: 1,
   dureeValiditeCodeJours: 14,
-  dureeSessionMinutes: 120,
   activeJeu: true,
   messagePerdu:
     "Pas de chance cette fois ! Voici un bon de réduction pour votre prochaine visite.",
   reductionConsolation: 10,
-  toursBonusParrainage: 1,
 };
 
 /**
@@ -61,16 +63,13 @@ export const lireParametres: () => Promise<Parametres> = cache(async (): Promise
     };
 
     const valeur: Parametres = {
-      toursMax: nombre("tours_max", DEFAUTS.toursMax),
       dureeValiditeCodeJours: nombre(
         "duree_validite_code_jours",
         DEFAUTS.dureeValiditeCodeJours,
       ),
-      dureeSessionMinutes: nombre("duree_session_minutes", DEFAUTS.dureeSessionMinutes),
       activeJeu: booleen("active_jeu", DEFAUTS.activeJeu),
       messagePerdu: map.get("message_perdu") ?? DEFAUTS.messagePerdu,
       reductionConsolation: nombre("reduction_consolation", DEFAUTS.reductionConsolation),
-      toursBonusParrainage: nombre("tours_bonus_parrainage", DEFAUTS.toursBonusParrainage),
     };
 
     return valeur;

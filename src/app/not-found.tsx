@@ -16,8 +16,8 @@ export default function Introuvable() {
         <p className="mt-2 text-[13px] leading-relaxed text-cendre">
           La roue ne s&apos;arrête pas ici. Le lien est peut-être expiré.
         </p>
-        <Link href="/jouer" className="btn-or mt-5 w-full">
-          Tenter ma chance
+        <Link href="/roue" className="btn-or mt-5 w-full">
+          Revenir à la roue
         </Link>
       </Carte>
     </div>

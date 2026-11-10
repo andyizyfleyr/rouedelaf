@@ -29,14 +29,13 @@ export default function ErreurClient({
           Petit souci technique
         </TitreOr>
         <p className="mt-2 text-[13px] leading-relaxed text-cendre">
-          Pas d&apos;inquiétude : votre participation est conservée. Appuyez sur le bouton pour
-          réessayer.
+          La roue n&apos;a pas pu s&apos;afficher. Appuyez sur le bouton pour réessayer.
         </p>
         <button type="button" onClick={reset} className="btn-or mt-5 w-full">
           <RefreshCw className="size-4" /> Réessayer
         </button>
-        <a href="/jouer" className="btn-fantome mt-2 w-full text-[12.5px]">
-          Revenir au début
+        <a href="/roue" className="btn-fantome mt-2 w-full text-[12.5px]">
+          Revenir à la roue
         </a>
       </Carte>
     </div>

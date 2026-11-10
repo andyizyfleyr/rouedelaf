@@ -23,19 +23,14 @@ export const instant = false;
  *    l'envie ;
  *  - aucune interaction avec la tablette : elle ne collecte aucune donnée.
  *
- * Pourquoi pas jouer directement sur la tablette ? Parce que le numéro
- * WhatsApp est l'actif marketing de l'opération : il doit être saisi par le
- * client sur son propre appareil. La borne attire, le téléphone convertit.
+ * Pourquoi pas jouer directement sur la tablette ? Parce que le jeu se joue
+ * sur le poste de la boutique, accompagné par la vendeuse. La borne attire
+ * l'œil et affiche les derniers cadeaux gagnés ; elle ne collecte rien.
  *
  * Le QR est rendu côté serveur : il reste net même sur un écran 4K.
  */
-export default async function PageBorne({
-  searchParams,
-}: PageProps<"/borne">) {
-  const param = await searchParams;
-  const source = typeof param.src === "string" ? param.src : "boutique";
-
-  const url = `${boutique.appUrl}/jouer?src=${encodeURIComponent(source)}`;
+export default async function PageBorne() {
+  const url = `${boutique.appUrl}/roue`;
 
   const qr = await QRCode.toDataURL(url, {
     errorCorrectionLevel: "H",
@@ -61,7 +56,6 @@ export default async function PageBorne({
       url={url}
       nomBoutique={boutique.nom}
       adresse={boutique.adresse}
-      source={source}
       initial={initial}
     />
   );

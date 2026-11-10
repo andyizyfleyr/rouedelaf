@@ -12,7 +12,7 @@ export default function manifest(): MetadataRoute.Manifest {
     short_name: "Roue de Noël",
     description:
       "Tournez la roue de Noël et gagnez des cadeaux à retirer en boutique.",
-    start_url: "/jouer",
+    start_url: "/roue",
     scope: "/",
     display: "standalone",
     orientation: "portrait",
@@ -30,9 +30,6 @@ export default function manifest(): MetadataRoute.Manifest {
         purpose: "maskable",
       },
     ],
-    shortcuts: [
-      { name: "Jouer", short_name: "Jouer", url: "/jouer" },
-      { name: "Ma roue", short_name: "Roue", url: "/roue" },
-    ],
+    shortcuts: [{ name: "Jouer", short_name: "Jouer", url: "/roue" }],
   };
 }

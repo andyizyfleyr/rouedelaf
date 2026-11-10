@@ -22,16 +22,16 @@ import { formatNombre } from "@/lib/format";
  */
 type Gagnant = {
   id: number;
-  nom: string;
-  telephone_aff: string | null;
   cadeau_nom: string | null;
   couleur: string | null;
+  icone: string | null;
+  image_url: string | null;
   created_at: string;
 };
 
 type Flux = {
   gagnants: Gagnant[];
-  totaux: { joueurs: number; gagnes: number; recuperes: number };
+  totaux: { tirages: number; gagnes: number; recuperes: number };
   horodatage: string;
 };
 
@@ -125,7 +125,7 @@ export function EcranBoutique({ modeHtml }: { modeHtml: boolean }) {
               Gagnants du jour
             </h1>
             <p className="text-[11.5px] tracking-[0.18em] text-cendre/60 uppercase">
-              Roue de la fortune · {process.env.NEXT_PUBLIC_BOUTIQUE_NOM ?? "Boutique"}
+              Roue de Noël · {process.env.NEXT_PUBLIC_BOUTIQUE_NOM ?? "Boutique"}
             </p>
           </div>
         </div>
@@ -147,7 +147,7 @@ export function EcranBoutique({ modeHtml }: { modeHtml: boolean }) {
 
       {/* Chiffres clés */}
       <div className="mt-4 grid grid-cols-3 gap-2.5">
-        <Chiffre icone={<Users className="size-4" />} libelle="Joueurs" valeur={formatNombre(flux?.totaux.joueurs ?? 0)} />
+        <Chiffre icone={<Users className="size-4" />} libelle="Tirages" valeur={formatNombre(flux?.totaux.tirages ?? 0)} />
         <Chiffre icone={<Gift className="size-4" />} libelle="Cadeaux gagnés" valeur={formatNombre(flux?.totaux.gagnes ?? 0)} />
         <Chiffre
           icone={<Trophy className="size-4" />}
@@ -169,8 +169,7 @@ export function EcranBoutique({ modeHtml }: { modeHtml: boolean }) {
             <span className="text-5xl">🎡</span>
             <p className="font-titre text-xl text-or-clair">La roue vous attend !</p>
             <p className="max-w-[36ch] text-[13px] leading-relaxed text-cendre/70">
-              Scannez le QR code à l&apos;entrée, tournez la roue et repartez peut-être avec un
-              cadeau.
+              Approchez-vous du comptoir et tournez la roue pour repartir avec un cadeau.
             </p>
           </div>
         )}
@@ -204,17 +203,17 @@ export function EcranBoutique({ modeHtml }: { modeHtml: boolean }) {
 
                 <div className="flex items-center gap-3">
                   <span
-                    className="flex size-11 shrink-0 items-center justify-center rounded-full text-[15px] font-bold text-black/75"
+                    className="grid size-11 shrink-0 place-items-center rounded-full text-[17px]"
                     style={{ backgroundColor: g.couleur ?? "#e8c66a" }}
                     aria-hidden
                   >
-                    {initiales(g.nom)}
+                    🎁
                   </span>
                   <div className="min-w-0">
                     <p className="truncate font-titre text-[15px] font-semibold text-creme">
-                      {g.nom}
+                      {g.cadeau_nom ?? "Cadeau"}
                     </p>
-                    <p className="truncate text-[12px] text-or/80">{g.cadeau_nom}</p>
+                    <p className="truncate text-[12px] text-or/80">Gagné en boutique</p>
                   </div>
                 </div>
                 <p className="mt-2 text-[10px] tracking-wide text-cendre/45 uppercase">
@@ -230,7 +229,7 @@ export function EcranBoutique({ modeHtml }: { modeHtml: boolean }) {
         <span>Mise à jour automatique toutes les 8 secondes</span>
         <span className="flex items-center gap-1.5">
           <Image src="/icones/icone-192.png" alt="" width={14} height={14} className="rounded" />
-          Roue de la fortune
+          Roue de Noël
         </span>
       </footer>
 
@@ -255,13 +254,6 @@ function Chiffre({ icone, libelle, valeur }: { icone: React.ReactNode; libelle: 
   );
 }
 
-function initiales(nom: string): string {
-  return nom
-    .split(/\s+/)
-    .slice(0, 2)
-    .map((m) => m.charAt(0).toUpperCase())
-    .join("");
-}
 
 function heure(date: string): string {
   return new Intl.DateTimeFormat("fr-FR", {

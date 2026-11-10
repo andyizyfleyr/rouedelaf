@@ -27,7 +27,7 @@ import type { StatsDashboard } from "@/lib/types";
  * `ResponsiveContainer` évite tout calcul de largeur inutile. Sur mobile,
  * on n'affiche que l'essentiel.
  */
-const COULEURS = ["#e8c66a", "#7c1d2e", "#1f6f5c", "#a9822b", "#b4552a", "#3a4a7a", "#6b4a7a"];
+const COULEURS = ["#e8c66a", "#b3121f", "#2f7a53", "#a9822b", "#d9263a", "#16402e", "#8e0c17"];
 
 export function GraphiquesDashboard({ stats }: { stats: StatsDashboard }) {
   const parJour = useMemo(
@@ -41,13 +41,24 @@ export function GraphiquesDashboard({ stats }: { stats: StatsDashboard }) {
     [stats.parJour],
   );
 
-  const sources = useMemo(() => {
-    const total = stats.parSource.reduce((s, x) => s + x.joueurs, 0) || 1;
-    return stats.parSource.map((s) => ({
-      ...s,
-      pourcentage: Math.round((s.joueurs / total) * 100),
-    }));
-  }, [stats.parSource]);
+  /**
+   * Répartition des cadeaux gagnés.
+   *
+   * Remplace l'ancien camembert « origine des joueurs » : il n'y a plus
+   * d'inscription, donc plus de source de trafic à mesurer. Ce qui intéresse
+   * la boutique, c'est de savoir QUELS lots partent.
+   */
+  const repartition = useMemo(() => {
+    const total = stats.parCadeau.reduce((s, c) => s + c.gagnes, 0) || 1;
+    return stats.parCadeau
+      .filter((c) => c.gagnes > 0)
+      .map((c) => ({
+        cle: String(c.id),
+        nom: c.nom,
+        gagnes: c.gagnes,
+        pourcentage: Math.round((c.gagnes / total) * 100),
+      }));
+  }, [stats.parCadeau]);
 
   return (
     <div className="grid gap-3 lg:grid-cols-3">
@@ -59,7 +70,7 @@ export function GraphiquesDashboard({ stats }: { stats: StatsDashboard }) {
           </h2>
           <div className="flex gap-3 text-[10px] text-cendre/70">
             <span className="flex items-center gap-1">
-              <span className="size-2 rounded-full bg-or" /> Joueurs
+              <span className="size-2 rounded-full bg-or" /> Tirages
             </span>
             <span className="flex items-center gap-1">
               <span className="size-2 rounded-full bg-emeraude" /> Gains
@@ -109,8 +120,8 @@ export function GraphiquesDashboard({ stats }: { stats: StatsDashboard }) {
               />
               <Area
                 type="monotone"
-                dataKey="joueurs"
-                name="Joueurs"
+                dataKey="tirages"
+                name="Tirages"
                 stroke="#e8c66a"
                 strokeWidth={2}
                 fill="url(#gradJoueurs)"
@@ -140,9 +151,9 @@ export function GraphiquesDashboard({ stats }: { stats: StatsDashboard }) {
       {/* Sources de trafic */}
       <Carte className="!p-4">
         <h2 className="mb-2 font-titre text-sm font-semibold tracking-wide text-or-clair uppercase">
-          Origine des joueurs
+          Cadeaux gagnés
         </h2>
-        {sources.length === 0 ? (
+        {repartition.length === 0 ? (
           <p className="py-12 text-center text-[12px] text-cendre/60">Pas encore de données.</p>
         ) : (
           <>
@@ -150,16 +161,16 @@ export function GraphiquesDashboard({ stats }: { stats: StatsDashboard }) {
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie
-                    data={sources}
-                    dataKey="joueurs"
-                    nameKey="source"
+                    data={repartition}
+                    dataKey="gagnes"
+                    nameKey="nom"
                     innerRadius="55%"
                     outerRadius="88%"
                     paddingAngle={2}
                     stroke="none"
                   >
-                    {sources.map((s, i) => (
-                      <Cell key={s.source} fill={COULEURS[i % COULEURS.length]} />
+                    {repartition.map((r, i) => (
+                      <Cell key={r.cle} fill={COULEURS[i % COULEURS.length]} />
                     ))}
                   </Pie>
                   <Tooltip
@@ -174,17 +185,17 @@ export function GraphiquesDashboard({ stats }: { stats: StatsDashboard }) {
               </ResponsiveContainer>
             </div>
             <ul className="mt-2 flex flex-col gap-1.5">
-              {sources.map((s, i) => (
-                <li key={s.source} className="flex items-center justify-between text-[11.5px]">
-                  <span className="flex items-center gap-1.5 capitalize text-cendre">
+              {repartition.map((r, i) => (
+                <li key={r.cle} className="flex items-center justify-between text-[11.5px]">
+                  <span className="flex items-center gap-1.5 text-cendre">
                     <span
                       className="size-2 rounded-full"
                       style={{ backgroundColor: COULEURS[i % COULEURS.length] }}
                     />
-                    {s.source}
+                    {r.nom}
                   </span>
                   <span className="tabular-nums text-cendre/70">
-                    {s.joueurs} · {s.pourcentage}%
+                    {r.gagnes} · {r.pourcentage}%
                   </span>
                 </li>
               ))}

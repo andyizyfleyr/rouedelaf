@@ -40,7 +40,14 @@ export type ResultatTirageApi = {
   caseIndex: number;
   /** Nombre total de cases (le client reconstruit la même roue). */
   nombreCases: number;
-  cadeau: { id: number; nom: string; couleur: string; icone: string } | null;
+  cadeau: {
+    id: number;
+    nom: string;
+    couleur: string;
+    icone: string;
+    /** Photo du lot : la popup l'affiche à la place de l'icône (jamais les deux). */
+    image_url?: string | null;
+  } | null;
   /** Code unique du cadeau (null si perdu). */
   code: string | null;
   /** QR code du code (data-URL générée par le serveur), null si perdu. */
@@ -50,16 +57,7 @@ export type ResultatTirageApi = {
   reductionConsolation: number | null;
 };
 
-/** Session de jeu renvoyée au client après son inscription. */
-export type SessionJeu = {
-  participantId: number;
-  nom: string;
-  toursRestants: number;
-  toursBonus: number;
-  codeParrain: string;
-};
-
-/** Tirage affiché sur la page résultat. */
+/** Résultat d'un tirage (popup de la roue + scan en caisse). */
 export type TirageResultat = {
   id: number;
   statut: "gagne" | "perdu";
@@ -75,40 +73,45 @@ export type TirageResultat = {
   reduction_consolation: number | null;
 };
 
-/** Données publiques du flux borne (aucune donnée personnelle sensible). */
+/**
+ * Données publiques du flux borne.
+ *
+ * Depuis que le jeu tourne sur le poste de la boutique, un tirage n'est
+ * rattaché à personne : pas de prénom, pas de numéro. La borne n'affiche donc
+ * que les CADEAUX gagnés et leur heure.
+ */
 export type FluxBorne = {
   gagnants: {
     id: number;
-    nom: string;
     cadeau_nom: string | null;
     couleur: string | null;
+    icone: string | null;
+    image_url: string | null;
     created_at: string;
   }[];
-  totaux: { joueurs: number; gagnes: number };
+  totaux: { tirages: number; gagnes: number };
 };
 
 /** Une ligne de l'écran boutique /admin/ecran. */
 export type GagnantEcran = {
   id: number;
-  nom: string;
-  telephone_aff: string | null;
   cadeau_nom: string | null;
   couleur: string | null;
+  icone: string | null;
+  image_url: string | null;
   created_at: string;
 };
 
 /** Statistiques du tableau de bord. */
 export type StatsDashboard = {
-  joueursTotal: number;
-  joueursAujourdhui: number;
+  tiragesAujourdhui: number;
   tiragesTotal: number;
   gagnesTotal: number;
   recuperesTotal: number;
   enAttenteTotal: number;
   tauxVictoire: number;
   codesExpires: number;
-  parJour: { jour: string; joueurs: number; gagnes: number; recuperes: number }[];
-  parSource: { source: string; joueurs: number }[];
+  parJour: { jour: string; tirages: number; gagnes: number; recuperes: number }[];
   parCadeau: {
     id: number;
     nom: string;
@@ -117,21 +120,4 @@ export type StatsDashboard = {
     gagnes: number;
     recuperes: number;
   }[];
-};
-
-/** Ligne de la liste joueurs (export CSV). */
-export type LigneJoueur = {
-  id: number;
-  nom: string;
-  telephone: string;
-  telephone_aff: string | null;
-  source: string;
-  created_at: string;
-  consentement: boolean;
-  bloque: boolean;
-  cadeau_nom: string | null;
-  statut: string | null;
-  code_unique: string | null;
-  recupere: boolean | null;
-  tirage_le: string | null;
 };

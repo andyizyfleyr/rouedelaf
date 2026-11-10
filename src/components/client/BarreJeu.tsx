@@ -66,10 +66,10 @@ function PastilleRoue() {
   return (
     <span
       aria-hidden
-      className="animate-scintille block size-7 rounded-full border border-or-clair/70 shadow-[0_0_18px_-4px_rgba(232,198,106,0.85)]"
+      className="animate-scintille block size-7 rounded-full border border-or-clair/70 shadow-[0_0_18px_-4px_rgba(212,175,55,0.9)]"
       style={{
         background:
-          "conic-gradient(#e8c66a 0 45deg, #b3121f 45deg 90deg, #16402e 90deg 135deg, #e8c66a 135deg 180deg, #b3121f 180deg 225deg, #16402e 225deg 270deg, #e8c66a 270deg 315deg, #2f7a53 315deg 360deg)",
+          "conic-gradient(#d4af37 0 45deg, #b3122b 45deg 90deg, #0b5d3b 90deg 135deg, #d4af37 135deg 180deg, #b3122b 180deg 225deg, #0b5d3b 225deg 270deg, #d4af37 270deg 315deg, #0b5d3b 315deg 360deg)",
       }}
     />
   );

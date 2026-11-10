@@ -292,15 +292,17 @@ const ICONES = ["🎁", "🎟️", "🧢", "🛍️", "🧴", "🖊️", "🌸",
  * (bleu, violet, sarcelle) juraient au milieu des lots de fête.
  */
 const COULEURS = [
-  "#D4A017",
-  "#B3121F",
-  "#1F7A50",
-  "#8E0C17",
-  "#2F7A53",
-  "#A9822B",
-  "#C41E2A",
-  "#16402E",
-  "#5A0E16",
+  // Casino de luxe : bordeaux dominant, vert profond en vis-à-vis, or pour
+  // les lots d'exception. L'ordre du tableau est celui du sélecteur : les
+  // deux premiers par défaut, c'est-à-dire l'alternance rouge / vert.
+  "#B3122B",
+  "#0B5D3B",
+  "#D4AF37",
+  "#7A0B14",
+  "#128A56",
+  "#8A6508",
+  "#D93A4A",
+  "#5C0A16",
 ];
 
 function PanneauFormulaire({

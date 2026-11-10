@@ -244,7 +244,7 @@ export function Roue({
         className="pointer-events-none absolute -inset-[12%] -z-10 rounded-full opacity-70 blur-3xl"
         style={{
           background:
-            "radial-gradient(circle, rgba(255,217,119,0.34) 0%, rgba(179,18,31,0.20) 42%, rgba(47,122,83,0.14) 62%, transparent 72%)",
+            "radial-gradient(circle, rgba(245,215,122,0.38) 0%, rgba(179,18,43,0.22) 42%, rgba(11,93,59,0.16) 62%, transparent 72%)",
         }}
       />
 
@@ -270,33 +270,49 @@ export function Roue({
             </linearGradient>
           ))}
 
-          {/* Jante : anneau métallique à facettes */}
+          {/*
+            Jante : métal poli. Le dégradé part du `#F5D77A` (or clair) et
+            descend vers `#B8860B` (or antique) : c'est l'alternance de ces
+            deux tons, et non une couleur unie, qui donne l'illusion d'un
+            anneau de laiton. Les deux éclats bordeaux et vert très courts
+            rappellent la table de jeu sans casser l'effet métallique.
+          */}
           <linearGradient id="jante" x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0%" stopColor="#fff6d2" />
-            <stop offset="14%" stopColor="#ffd977" />
-            <stop offset="30%" stopColor="#a9822b" />
-            <stop offset="42%" stopColor="#e8c66a" />
-            <stop offset="54%" stopColor="#b3121f" />
-            <stop offset="62%" stopColor="#ffeeb4" />
-            <stop offset="78%" stopColor="#2f7a53" />
-            <stop offset="88%" stopColor="#7a5a14" />
-            <stop offset="100%" stopColor="#f8e7a8" />
+            <stop offset="0%" stopColor="#fff4cd" />
+            <stop offset="10%" stopColor="#f5d77a" />
+            <stop offset="24%" stopColor="#b8860b" />
+            <stop offset="36%" stopColor="#f5d77a" />
+            <stop offset="50%" stopColor="#8a6508" />
+            <stop offset="58%" stopColor="#b3122b" />
+            <stop offset="64%" stopColor="#f5d77a" />
+            <stop offset="76%" stopColor="#0b5d3b" />
+            <stop offset="84%" stopColor="#b8860b" />
+            <stop offset="92%" stopColor="#fff4cd" />
+            <stop offset="100%" stopColor="#c9a227" />
           </linearGradient>
 
-          {/* Moyeu : dôme doré */}
+          {/* Or « massif » des liserés : plus saturé que la jante polie. */}
+          <linearGradient id="joncOr" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#fff3c4" />
+            <stop offset="46%" stopColor="#d4af37" />
+            <stop offset="100%" stopColor="#8a6508" />
+          </linearGradient>
+
+          {/* Moyeu : dôme doré posé sur un écrin bordeaux */}
           <radialGradient id="moyeu" cx="38%" cy="32%" r="72%">
             <stop offset="0%" stopColor="#fffbe8" />
-            <stop offset="30%" stopColor="#ffd977" />
-            <stop offset="60%" stopColor="#c9a227" />
-            <stop offset="84%" stopColor="#b3121f" />
-            <stop offset="100%" stopColor="#5c0810" />
+            <stop offset="26%" stopColor="#f5d77a" />
+            <stop offset="56%" stopColor="#d4af37" />
+            <stop offset="80%" stopColor="#b8860b" />
+            <stop offset="92%" stopColor="#b3122b" />
+            <stop offset="100%" stopColor="#4e0610" />
           </radialGradient>
 
           {/* Doigt / aiguille */}
           <linearGradient id="doigt" x1="0" y1="0" x2="0" y2="1">
             <stop offset="0%" stopColor="#fffdf3" />
-            <stop offset="42%" stopColor="#f2d68d" />
-            <stop offset="100%" stopColor="#b0812a" />
+            <stop offset="40%" stopColor="#f5d77a" />
+            <stop offset="100%" stopColor="#b8860b" />
           </linearGradient>
 
           {/* Reflet vitreux qui balaie la roue */}
@@ -337,7 +353,7 @@ export function Roue({
         {/* ── Jante extérieure ─────────────────────────────────────────── */}
         <circle cx={CENTRE} cy={CENTRE} r={RAYON} fill="url(#jante)" />
         <circle cx={CENTRE} cy={CENTRE} r={RAYON - 3} fill="none" stroke="rgba(0,0,0,0.45)" strokeWidth="1.2" />
-        <circle cx={CENTRE} cy={CENTRE} r={RAYON - 9} fill="#081711" />
+        <circle cx={CENTRE} cy={CENTRE} r={RAYON - 9} fill="#0a0a0a" />
         <circle cx={CENTRE} cy={CENTRE} r={RAYON - 9} fill="none" stroke="rgba(255,246,210,0.28)" strokeWidth="0.8" />
 
         {/* ── Partie tournante ─────────────────────────────────────────── */}
@@ -358,25 +374,108 @@ export function Roue({
             </g>
           ))}
 
+          {/*
+            LISERÉ OR entre les cases.
+            Sur une roue de casino, chaque secteur est cerclé de laiton : c'est
+            ce filet qui sépare proprement un bordeaux d'un vert profond sans
+            les faire « baver » l'un dans l'autre. Une seule ligne par cloison
+            (du moyeu au bord) suffit, tracée par-dessus les secteurs.
+          */}
+          {secteurs.map((s) => {
+            const bord = point(CENTRE, CENTRE, RAYON - 10, s.debut);
+            return (
+              <g key={`cloison-${s.cle}`}>
+                {/* Filet sombre d'abord : il « assoit » le doré sur les deux
+                    couleurs voisines, y compris sur l'or clair du gros lot. */}
+                <line
+                  x1={CENTRE}
+                  y1={CENTRE}
+                  x2={bord.x}
+                  y2={bord.y}
+                  stroke="rgba(20,12,2,0.55)"
+                  strokeWidth="2.6"
+                  strokeLinecap="round"
+                />
+                <line
+                  x1={CENTRE}
+                  y1={CENTRE}
+                  x2={bord.x}
+                  y2={bord.y}
+                  stroke="url(#joncOr)"
+                  strokeWidth="1.6"
+                  strokeLinecap="round"
+                  opacity="0.95"
+                />
+              </g>
+            );
+          })}
+
           {/* Ampoules sur le pourtour : elles clignotent en alternance quand
               la roue tourne (animation CSS, donc aucune valeur au rendu). */}
           {secteurs.map((s, i) => {
             const rad = ((s.milieu - 90) * Math.PI) / 180;
-            const r = RAYON - 15;
-            // Guirlande : or, rouge de Noël, givre — comme un vrai sapin.
-            const teinte = i % 3 === 0 ? "#ffd977" : i % 3 === 1 ? "#ff5a68" : "#d8f2e9";
+            const r = RAYON - 4.6;
+            // Ampoules de casino : or chaud, avec un rouge bordeaux sur deux
+            // pour rappeler la table. Le vert est réservé aux cases afin que
+            // les lumières ne se confondent pas avec elles.
+            const teinte = i % 2 === 0 ? "#f5d77a" : "#d93a4a";
             return (
-              <circle
-                key={`amp-${s.cle}`}
-                cx={CENTRE + r * Math.cos(rad)}
-                cy={CENTRE + r * Math.sin(rad)}
-                r={2.8}
-                fill={teinte}
-                filter="url(#haloAmpoule)"
-                className={enMouvement ? "ampoule-roue" : undefined}
-                opacity={enMouvement ? undefined : 0.62}
-                style={enMouvement ? { animationDelay: `${(i % 3) * 0.18}s` } : undefined}
-              />
+              <g key={`amp-${s.cle}`}>
+                {/* Culot : donne l'impression d'une ampoule VISSÉE dans la
+                    jante plutôt que d'un point de couleur posé dessus. */}
+                <circle
+                  cx={CENTRE + r * Math.cos(rad)}
+                  cy={CENTRE + r * Math.sin(rad)}
+                  r={4.6}
+                  fill="#201704"
+                  opacity="0.92"
+                />
+                <circle
+                  cx={CENTRE + r * Math.cos(rad)}
+                  cy={CENTRE + r * Math.sin(rad)}
+                  r={4.6}
+                  fill="none"
+                  stroke="rgba(255,244,205,0.75)"
+                  strokeWidth="0.8"
+                />
+                {/*
+                  La lumière elle-même : une pastille colorée, son halo, puis
+                  un cœur presque blanc. C'est ce cœur qui fait « briller »
+                  l'ampoule ; sans lui, on ne voit qu'un point de couleur.
+
+                  « Discrètes en continu » : la lueur respire lentement, y
+                  compris à l'arrêt. Le décalage d'un tiers de cycle crée une
+                  vague qui fait le tour de la jante sans jamais clignoter.
+                */}
+                <g
+                  className={enMouvement ? "ampoule-roue ampoule-rapide" : "ampoule-roue"}
+                  style={{ animationDelay: `${(i % 3) * 0.32}s` }}
+                >
+                  <circle
+                    cx={CENTRE + r * Math.cos(rad)}
+                    cy={CENTRE + r * Math.sin(rad)}
+                    r={3.9}
+                    fill={teinte}
+                    filter="url(#haloAmpoule)"
+                  />
+                  {/* Reflet de verre, décalé vers le haut : c'est ce décalage
+                      qui fait lire « ampoule » plutôt que « pastille ». */}
+                  <circle
+                    cx={CENTRE + r * Math.cos(rad) - 1}
+                    cy={CENTRE + r * Math.sin(rad) - 1.2}
+                    r={1.5}
+                    fill="#fffdf2"
+                    opacity="0.92"
+                  />
+                  <circle
+                    cx={CENTRE + r * Math.cos(rad) + 0.9}
+                    cy={CENTRE + r * Math.sin(rad) + 1.1}
+                    r={0.9}
+                    fill="#ffffff"
+                    opacity="0.6"
+                  />
+                </g>
+              </g>
             );
           })}
 
@@ -600,10 +699,27 @@ function Vignette({ secteur, onCasse }: { secteur: Secteur; onCasse: () => void 
 function Libelle({ secteur }: { secteur: Secteur }) {
   const compact = secteur.angle < 26;
   const libelle = compact ? nomCourt(secteur.nom) : secteur.nom;
-  const lignes = decouper(libelle, compact ? 9 : 14);
-  const taille = compact ? 8.5 : lignes.length > 1 ? 10 : 11.5;
+  const lignes = decouper(libelle, compact ? 8 : 12);
+
   /** Rayon du centre du libellé : milieu de la couronne, jamais sur le bord. */
   const rayon = RAYON * (compact ? 0.68 : 0.60);
+
+  /**
+   * La taille de police est PLAFONNÉE par la largeur réellement disponible.
+   *
+   * Un secteur de 45° n'offre, à la distance du libellé, qu'une corde d'une
+   * centaine de pixels : à 11,5 px, « SAC DE COURSES » (14 caractères) la
+   * dépassait et mordait sur les cases voisines. On calcule donc la corde du
+   * secteur, et on réduit la police si la ligne la plus longue ne tient pas
+   * (≈ 0,62 em par capitale en Manrope Bold).
+   */
+  const plusLongue = Math.max(...lignes.map((l) => l.length));
+  const corde = 2 * rayon * Math.sin((secteur.angle * Math.PI) / 360) * 0.94;
+  const tailleParLargeur = corde / (0.62 * Math.max(plusLongue, 1));
+  const taille = Math.max(
+    8,
+    Math.min(compact ? 8.5 : lignes.length > 1 ? 10 : 11.5, tailleParLargeur),
+  );
   const retourner = secteur.milieu > 180;
   const ecart = taille + 1.4;
   const premierDy = lignes.length > 1 ? -ecart / 2 : 0;

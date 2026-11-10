@@ -25,7 +25,8 @@ export async function lancerConfettis(opts: { intense?: boolean } = {}): Promise
     const confetti = charge.default.create(canvasConfettis(), { resize: true, useWorker: true });
     courante = confetti as unknown as InstanceConfettis;
     const identifiant = ++generation;
-    const couleurs = ["#e8c66a", "#f8e7a8", "#fff3c4", "#a9822b", "#ffffff", "#7c1d2e"];
+    // Confettis de casino : or sous toutes ses facettes, plus le bordeaux.
+    const couleurs = ["#d4af37", "#f5d77a", "#fff3c4", "#b8860b", "#fff8e7", "#b3122b"];
     const duree = opts.intense ? 3200 : 1800;
     const fin = Date.now() + duree;
 

@@ -16,9 +16,9 @@
   --color-nuit-3: #1a1715;
   --color-braise: #2a2320;
 
-  --color-or: #e8c66a;
-  --color-or-clair: #f8e7a8;
-  --color-or-fonce: #a9822b;
+  --color-or: #d4af37;
+  --color-or-clair: #f5d77a;
+  --color-or-fonce: #b8860b;
   --color-or-brillant: #fff3c4;
 
   --color-bordeaux: #7c1d2e;
@@ -28,20 +28,24 @@
   --color-creme: #f8f3e7;
   --color-cendre: #bcb3a5;
 
-  /* — Thème de Noël ——————————————————————————————————————————
-     Sapin profond, rouge de baie, or des guirlandes, neige. Ces
-     teintes remplacent le « velours noir » : le jeu se lit comme
-     une vitrine de fête, sans perdre l'aspect bijou doré. */
-  --color-sapin: #0b2018;
-  --color-sapin-2: #0f2c20;
-  --color-sapin-3: #16402e;
-  --color-sapin-clair: #2f7a53;
-  --color-rouge-noel: #b3121f;
+  /* — Palette « casino de luxe » ——————————————————————————————
+     Bordeaux, vert profond, or métal et blanc crème sur un fond
+     presque noir : la roue doit ressembler à une table de maison
+     de jeu, pas à une décoration de supermarché.
+
+     `sapin`, `guirlande`, `neige` et `givre` restent les NOMS
+     utilisés par les composants : seules les valeurs changent, ce
+     qui repeint toute l'application sans rien casser. */
+  --color-sapin: #06281b;
+  --color-sapin-2: #082f20;
+  --color-sapin-3: #0b5d3b;
+  --color-sapin-clair: #128a56;
+  --color-rouge-noel: #b3122b;
   --color-rouge-noel-clair: #d9263a;
   --color-rouge-noel-fonce: #7a0b14;
-  --color-neige: #eaf4f1;
-  --color-givre: #a9d8c9;
-  --color-guirlande: #ffd977;
+  --color-neige: #fff8e7;
+  --color-givre: #d8c9a3;
+  --color-guirlande: #f5d77a;
 
   /* Polices */
   --font-titre: "Cinzel", "Times New Roman", serif;
@@ -76,14 +80,22 @@
   to { transform: translateX(-50%); }
 }
 
-/* Ampoules de la roue : clignotement décalé (voir components/roue/Roue.tsx) */
+/* Ampoules de la roue : lueur chaude qui respire (voir Roue.tsx).
+   Choix de l'exploitant : « discrètes en continu ». On a donc abandonné le
+   clignotement binaire (steps(1)) qui faisait enseigne de fête foraine : les
+   ampoules gardent une intensité élevée et ne font que varier doucement, ce
+   qui se lit comme des loupiotes de casino et non comme un gyrophare. */
 @keyframes ampoule {
-  0%, 45% { opacity: 0.95; }
-  55%, 100% { opacity: 0.18; }
+  0%, 100% { opacity: 0.82; }
+  50% { opacity: 1; }
 }
 .ampoule-roue {
-  animation: ampoule 0.44s steps(1, end) infinite alternate;
+  animation: ampoule 2.6s ease-in-out infinite;
 }
+
+/* Pendant la rotation, la lueur accélère un peu : les ampoules suivent la
+   roue qui prend de la vitesse, sans jamais clignoter franchement. */
+.ampoule-rapide { animation-duration: 1.1s; }
 
 /* Entrée en scène de la roue */
 @keyframes apparait {
@@ -113,10 +125,12 @@ body {
 .fond-velours {
   position: relative;
   background-image:
-    radial-gradient(1200px 700px at 50% -10%, rgba(255, 217, 119, 0.20), transparent 62%),
-    radial-gradient(900px 620px at 108% 8%, rgba(179, 18, 31, 0.28), transparent 60%),
-    radial-gradient(820px 720px at -8% 100%, rgba(47, 122, 83, 0.30), transparent 64%),
-    linear-gradient(180deg, #081711 0%, #0b2018 44%, #06120d 100%);
+    /* Halo de projecteur au-dessus de la roue : c'est lui qui fait « briller »
+       l'or, en créant un contraste chaud sur un fond presque noir. */
+    radial-gradient(1150px 700px at 50% -12%, rgba(212, 175, 55, 0.22), transparent 60%),
+    radial-gradient(900px 620px at 106% 6%, rgba(179, 18, 43, 0.30), transparent 58%),
+    radial-gradient(820px 720px at -6% 100%, rgba(11, 93, 59, 0.34), transparent 62%),
+    linear-gradient(180deg, #04140d 0%, #06281b 46%, #03100a 100%);
 }
 
 /* Neige qui tombe : deux nappes de points, très lentes, purement décoratives.

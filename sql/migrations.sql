@@ -244,3 +244,40 @@ BEGIN
     );
 END $$;
 
+-- ----------------------------------------------------------------------------
+--  M6. Cadeaux aux couleurs « casino de luxe »
+--
+--  La palette de fête (or pâle, baies, sapins clairs) est remplacée par le
+--  bordeaux #B3122B, le vert profond #0B5D3B et l'or #D4AF37. Le rouge reste
+--  DOMINANT : c'est la couleur qui attire l'œil sur une roue.
+--
+--  Comme M3, on ne touche QU'AUX lignes encore sur la valeur précédente : une
+--  couleur choisie à la main dans /admin/cadeaux est respectée. Une base qui
+--  n'a jamais vu M3 passe d'abord par M3 puis par ce bloc, d'où les deux
+--  valeurs possibles en entrée.
+-- ----------------------------------------------------------------------------
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns
+     WHERE table_schema = 'public' AND table_name = 'cadeaux'
+       AND column_name = 'couleur'
+  ) THEN
+    UPDATE cadeaux SET couleur = '#D4AF37', updated_at = now()
+     WHERE nom = 'Bon d''achat 5 000 FCFA' AND couleur IN ('#C9A227', '#D4A017');
+    UPDATE cadeaux SET couleur = '#B3122B', updated_at = now()
+     WHERE nom = 'Casquette boutique' AND couleur IN ('#8B1E3F', '#B3121F');
+    UPDATE cadeaux SET couleur = '#0B5D3B', updated_at = now()
+     WHERE nom = 'Sac de courses' AND couleur IN ('#1F6F5C', '#1F7A50');
+    UPDATE cadeaux SET couleur = '#B3122B', updated_at = now()
+     WHERE nom = 'Crème hydratante' AND couleur IN ('#B4552A', '#8E0C17');
+    UPDATE cadeaux SET couleur = '#0B5D3B', updated_at = now()
+     WHERE nom = 'Stylo publicitaire' AND couleur IN ('#3A4A7A', '#2F7A53');
+    UPDATE cadeaux SET couleur = '#B3122B', updated_at = now()
+     WHERE nom = 'Échantillon parfum' AND couleur IN ('#6B4A7A', '#A9822B');
+    UPDATE cadeaux SET couleur = '#B3122B', updated_at = now()
+     WHERE nom = 'Réduction 10 %' AND couleur IN ('#0F6B6B', '#C41E2A');
+    UPDATE cadeaux SET couleur = '#0B5D3B', updated_at = now()
+     WHERE nom = 'Bon café offert' AND couleur IN ('#4A3F35', '#16402E');
+  END IF;
+END $$;

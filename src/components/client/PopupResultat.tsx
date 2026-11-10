@@ -134,8 +134,8 @@ export function PopupResultat({
                   key={i}
                   className="animate-scintille size-1 rounded-full"
                   style={{
-                    background: i % 3 === 0 ? "#ffd977" : i % 3 === 1 ? "#d9263a" : "#a9d8c9",
-                    boxShadow: `0 0 6px ${i % 3 === 0 ? "rgba(255,217,119,0.8)" : "rgba(217,38,58,0.65)"}`,
+                    background: i % 2 === 0 ? "#f5d77a" : "#d93a4a",
+                    boxShadow: `0 0 6px ${i % 2 === 0 ? "rgba(245,215,122,0.8)" : "rgba(217,58,74,0.65)"}`,
                     animationDelay: `${(i % 4) * 0.3}s`,
                   }}
                 />

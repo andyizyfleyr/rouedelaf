@@ -92,6 +92,8 @@ async function Contenu() {
       icone: c.icone,
       probabilite: Number(c.probabilite),
       stock: Number(c.stock),
+      // Une case avec photo n'affichera QUE la photo (voir components/roue/Roue).
+      image_url: c.image_url,
     })),
   );
 

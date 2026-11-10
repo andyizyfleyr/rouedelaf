@@ -75,6 +75,8 @@ type Secteur = {
   cle: string;
   nom: string;
   icone: string;
+  /** Photo du cadeau : si elle est là, la case n'affiche QUE l'image. */
+  image: string | null;
   couleur: string;
   clair: string;
   fonce: string;
@@ -112,6 +114,13 @@ export function Roue({
   });
   /** Incrémenté à chaque cloison franchie : fait claquer l'aiguille. */
   const [claquer, setClaquer] = useState(0);
+  /**
+   * URLs d'images qui n'ont pas pu s'afficher (lien mort, hébergement fermé,
+   * faute de frappe dans l'administration). Une case dont la photo casse
+   * retombe AUTOMATIQUEMENT sur son texte : mieux vaut un libellé qu'une case
+   * de couleur vide, qui laisserait croire à un bug.
+   */
+  const [imagesCassees, setImagesCassees] = useState<Record<string, true>>({});
   const animationRef = useRef<ReturnType<typeof animate> | null>(null);
   const rotationRef = useRef(angleInitial ?? 0);
   /** Horodatage de la dernière cloison franchie (rythme des claquements). */
@@ -128,6 +137,7 @@ export function Roue({
         cle: `${c.id}-${i}`,
         nom: c.nom,
         icone: c.icone,
+        image: imageAffichable(c.image_url),
         couleur: c.couleur,
         clair: nuancer(c.couleur, 1.34),
         fonce: nuancer(c.couleur, 0.66),
@@ -368,10 +378,27 @@ export function Roue({
             );
           })}
 
-          {/* Libellés incurvés le long du bord */}
-          {secteurs.map((s) => (
-            <Libelle key={`lib-${s.cle}`} secteur={s} />
-          ))}
+          {/* Une case affiche SOIT le texte, SOIT l'image du cadeau.
+              Jamais les deux : une photo et un libellé dans un secteur de
+              45° se chevauchaient, et une vignette + un texte donnaient
+              l'impression d'une roue surchargée. Le choix appartient à
+              l'exploitant : il met une photo dans la fiche du cadeau, ou il
+              n'en met pas. */}
+          {secteurs.map((s) =>
+            s.image && !imagesCassees[s.image] ? (
+              <Vignette
+                key={`img-${s.cle}`}
+                secteur={s}
+                onCasse={() => {
+                  const url = s.image;
+                  if (!url) return;
+                  setImagesCassees((etat) => ({ ...etat, [url]: true }));
+                }}
+              />
+            ) : (
+              <Libelle key={`lib-${s.cle}`} secteur={s} />
+            ),
+          )}
 
           {/* Reflet vitreux */}
           <circle cx={CENTRE} cy={CENTRE} r={RAYON - 10} fill="url(#vitre)" />
@@ -470,6 +497,68 @@ export function nomCourt(nom: string): string {
   return (porteurs.length ? porteurs : mots).sort((a, b) => b.length - a.length)[0];
 }
 
+/**
+ * Case IMAGE : la photo du cadeau remplit tout le secteur, et rien d'autre.
+ *
+ * Règle demandée par l'exploitant — « soit du texte, soit l'image » : une case
+ * affiche l'un OU l'autre, jamais un mélange. Une case avec photo n'a donc ni
+ * libellé incurvé, ni petite icône, ni fond de couleur visible : le nom du lot
+ * reste accessible juste en dessous de la roue (l'étiquette qui suit le doigt)
+ * et dans la popup de résultat.
+ *
+ * Mise en œuvre : le secteur est ramené à la verticale par une rotation, puis
+ * une image rectangulaire assez large pour couvrir l'ouverture angulaire y est
+ * posée (`preserveAspectRatio: slice`). Le `clipPath` en camembert garantit que
+ * la photo ne déborde jamais sur la case voisine.
+ */
+function Vignette({ secteur, onCasse }: { secteur: Secteur; onCasse: () => void }) {
+  const rayonExt = RAYON - 10;
+  const marge = 0.9; // degrés : laisse respirer la cloison entre deux cases
+  const debut = secteur.debut + marge;
+  const fin = secteur.debut + secteur.angle - marge;
+  const chemin = secteurPath(CENTRE, CENTRE, rayonExt, debut, fin);
+  const idClip = `clip-${secteur.cle}`;
+
+  // Largeur nécessaire pour couvrir l'ouverture du secteur (le triangle va en
+  // s'évasant) : la corde au bord extérieur, plus une marge de sécurité.
+  const largeur = 2 * rayonExt * Math.sin((secteur.angle * Math.PI) / 360) * 1.12;
+
+  return (
+    <g>
+      <defs>
+        <clipPath id={idClip}>
+          <path d={chemin} />
+        </clipPath>
+      </defs>
+
+      <g clipPath={`url(#${idClip})`}>
+        {/* Rotation : le secteur pointe alors vers le haut du repère, et une
+            simple image verticale le couvre entièrement. */}
+        <g transform={`rotate(${secteur.milieu} ${CENTRE} ${CENTRE})`}>
+          <image
+            href={secteur.image ?? undefined}
+            x={CENTRE - largeur / 2}
+            y={CENTRE - rayonExt}
+            width={largeur}
+            height={rayonExt}
+            preserveAspectRatio="xMidYMid slice"
+            style={{ pointerEvents: "none" }}
+            // Un SVG <image> déclenche bien `error` : on bascule alors la case
+            // en mode texte (voir `imagesCassees` dans le composant Roue).
+            onError={onCasse}
+          />
+        </g>
+        {/* Voile léger : garde les cloisons et l'aiguille lisibles même sur une
+            photo très claire (un ciel, un fond blanc). */}
+        <path d={chemin} fill="url(#voile)" opacity="0.32" />
+      </g>
+
+      {/* Liseré interne : détache la case de sa voisine sur les photos sombres. */}
+      <path d={chemin} fill="none" stroke="rgba(255,246,210,0.18)" strokeWidth="0.7" />
+    </g>
+  );
+}
+
 function Libelle({ secteur }: { secteur: Secteur }) {
   const compact = secteur.angle < 26;
   const libelle = compact ? nomCourt(secteur.nom) : secteur.nom;
@@ -539,6 +628,21 @@ function point(cx: number, cy: number, rayon: number, deg: number) {
     x: Number((cx + rayon * Math.cos(rad)).toFixed(2)),
     y: Number((cy + rayon * Math.sin(rad)).toFixed(2)),
   };
+}
+
+/**
+ * Une URL d'image est-elle affichable dans la roue ?
+ *
+ * On n'accepte que http(s) et les chemins locaux : une URL `javascript:` ou
+ * `data:` saisie par erreur (ou par malveillance) ne doit jamais finir dans un
+ * attribut `href` du SVG. Une valeur refusée retombe proprement sur le texte.
+ */
+function imageAffichable(url: string | null | undefined): string | null {
+  if (!url) return null;
+  const valeur = url.trim();
+  if (valeur.startsWith("/")) return valeur;
+  if (/^https?:\/\//i.test(valeur)) return valeur;
+  return null;
 }
 
 /** Chemin SVG d'un secteur (part du centre). */

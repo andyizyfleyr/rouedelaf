@@ -491,8 +491,22 @@ function PanneauFormulaire({
 
           <div>
             <label htmlFor="imageUrl" className="etiquette">
-              Image (URL, facultatif)
+              Image du cadeau (URL, facultatif)
             </label>
+            {/*
+              Règle d'affichage de la roue : une case montre SOIT le texte, SOIT
+              la photo. L'exploitant doit le savoir au moment de choisir, sinon
+              il colle une image ET garde un nom long, et s'attend à voir les
+              deux.
+            */}
+            <p className="mb-1.5 flex items-start gap-1.5 rounded-lg border border-white/[0.08] bg-white/[0.03] px-2 py-1.5 text-[10.5px] leading-snug text-cendre/70">
+              <ImageIcon className="mt-px size-3 shrink-0 text-or/70" />
+              <span>
+                Sur la roue, la case affiche <strong className="text-creme">soit la photo</strong>,{" "}
+                <strong className="text-creme">soit le nom</strong> — jamais les deux. Avec une photo,
+                le nom reste écrit dessus en petit.
+              </span>
+            </p>
             <input
               id="imageUrl"
               name="imageUrl"

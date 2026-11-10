@@ -139,6 +139,7 @@ export async function effectuerTirage(
       icone: c.icone,
       probabilite: Number(c.probabilite),
       stock: Number(c.stock),
+      image_url: c.image_url,
     })),
   );
 

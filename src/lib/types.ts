@@ -11,6 +11,13 @@ export type CadeauRoue = {
   icone: string;
   probabilite: number;
   stock: number;
+  /**
+   * Photo du cadeau (URL absolue). Quand elle existe, la case n'affiche QUE
+   * l'image : pas de libellé, pas de petite icône. Sans image, la case
+   * n'affiche QUE le texte. Les deux ne se mélangent jamais (règle demandée
+   * par l'exploitant : « soit du texte, soit l'image »).
+   */
+  image_url?: string | null;
 };
 
 /** Lot complet tel que manipulé par l'admin. */

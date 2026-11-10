@@ -36,6 +36,8 @@ export type ResultatTirageApi = {
   cadeau: { id: number; nom: string; couleur: string; icone: string } | null;
   /** Code unique du cadeau (null si perdu). */
   code: string | null;
+  /** QR code du code (data-URL générée par le serveur), null si perdu. */
+  qrDataUrl?: string | null;
   expireLe: string | null;
   /** Bon de consolation éventuel (perdant). */
   reductionConsolation: number | null;

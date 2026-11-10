@@ -1,5 +1,5 @@
 import { Suspense } from "react";
-import { redirect } from "next/navigation";
+import Link from "next/link";
 import { Gift, MapPin, Sparkles, Ticket } from "lucide-react";
 
 import { FormulaireJeu } from "@/components/client/FormulaireJeu";
@@ -30,13 +30,16 @@ export default function PageJouer() {
 async function Contenu() {
   const session = await lireSessionJeu();
 
-  // Déjà joué et plus de tour disponible → on l'envoie voir son résultat.
+  // Déjà inscrit ? On ne redirige PAS de force : le joueur reste maître de sa
+  // navigation (une redirection surprise donnait l'impression que le site se
+  // fermait tout seul). S'il a déjà joué, il voit simplement un lien.
+  let dejaJoue = false;
   if (session) {
     const [dernier] = await sql`
       SELECT id FROM tirages WHERE participant_id = ${session.participantId}
       ORDER BY created_at DESC, id DESC LIMIT 1
     `;
-    if (dernier) redirect(`/resultat?t=${dernier.id}`);
+    dejaJoue = Boolean(dernier);
   }
 
   return (
@@ -54,7 +57,23 @@ async function Contenu() {
         </p>
       </header>
 
-      <FormulaireJeu />
+      {dejaJoue ? (
+        <div className="carte-luxe flex flex-col gap-2.5 !p-4 text-center">
+          <p className="font-titre text-[15px] font-semibold text-creme">
+            Vous avez déjà participé
+          </p>
+          <p className="text-[11.5px] leading-snug text-cendre/75">
+            Votre résultat vous attend. Une seule participation par numéro.
+          </p>
+          <div className="flex gap-1.5">
+            <Link href="/roue" className="btn-or flex-1 !py-2.5 text-[12.5px]">
+              Revoir mon résultat
+            </Link>
+          </div>
+        </div>
+      ) : (
+        <FormulaireJeu />
+      )}
 
       {/* Trois promesses en une ligne, pas trois paragraphes */}
       <ul className="grid grid-cols-3 gap-1.5 text-center">

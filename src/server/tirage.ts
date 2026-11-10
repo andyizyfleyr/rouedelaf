@@ -8,6 +8,7 @@ import { tirerGagnant } from "@/lib/tirage-serveur";
 import type { CadeauRoue, ResultatTirageApi } from "@/lib/types";
 
 import { lireParametres } from "./params";
+import QRCode from "qrcode";
 
 /**
  * ══════════════════════════════════════════════════════════════════════════
@@ -173,6 +174,19 @@ export async function effectuerTirage(
       const caseIndex = indexDeLaCase(cases, cadeauId);
       const cadeau = cadeaux.find((c) => Number(c.id) === cadeauId) ?? null;
 
+      // QR du code cadeau, généré ICI : la popup peut l'afficher sans
+      // aller-retour réseau supplémentaire, même en 3G capricieuse.
+      const codeUnique = resultat.code_unique ? String(resultat.code_unique) : null;
+      const qrDataUrl =
+        codeUnique && resultat.statut === "gagne"
+          ? await QRCode.toDataURL(codeUnique, {
+              errorCorrectionLevel: "M",
+              margin: 1,
+              width: 420,
+              color: { dark: "#0a0908", light: "#f8e7a8" },
+            })
+          : null;
+
       return {
         tirageId: Number(resultat.tirage_id),
         statut: resultat.statut === "gagne" ? "gagne" : "perdu",
@@ -181,7 +195,8 @@ export async function effectuerTirage(
         cadeau: cadeau
           ? { id: Number(cadeau.id), nom: cadeau.nom, couleur: cadeau.couleur, icone: cadeau.icone }
           : null,
-        code: resultat.code_unique ? String(resultat.code_unique) : null,
+        code: codeUnique,
+        qrDataUrl,
         expireLe: resultat.expire_le ? new Date(resultat.expire_le as string).toISOString() : null,
         reductionConsolation: resultat.statut === "perdu" ? parametres.reductionConsolation : null,
       };

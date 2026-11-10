@@ -5,8 +5,11 @@ import { EcranRoue } from "@/components/client/EcranRoue";
 import { sql } from "@/lib/db";
 import { construireCases } from "@/lib/roue";
 import { lireSessionJeu } from "@/lib/session";
-import { chargerCadeauxRoue } from "@/server/tirage";
-import { toursRestants } from "@/server/tirage";
+import { chargerCadeauxRoue, toursRestants } from "@/server/tirage";
+import { tirageParId } from "@/server/data";
+import { lireParametres } from "@/server/params";
+import { boutique } from "@/lib/env";
+import QRCode from "qrcode";
 
 export const metadata = {
   title: "La roue",
@@ -32,13 +35,11 @@ export default function PageRoue() {
   );
 }
 
-/** Coquille statique : la roue apparaît immédiatement (même en 3G). */
+/** Coquille statique : la roue occupe l'écran tout de suite (même en 3G). */
 function SqueletteRoue() {
   return (
-    <div className="flex flex-1 flex-col justify-center gap-3 py-1">
-      <div className="mx-auto h-4 w-40 animate-pulse rounded bg-white/5" />
-      <div className="mx-auto aspect-square w-full max-w-[340px] animate-pulse rounded-full border border-or/15 bg-gradient-to-br from-white/5 to-transparent" />
-      <div className="mt-2 h-[46px] w-full animate-pulse rounded-full bg-white/5" />
+    <div className="flex w-full flex-1 items-center justify-center">
+      <div className="aspect-square w-full max-w-[min(100vw,100dvh)] animate-pulse rounded-full border border-or/15 bg-gradient-to-br from-white/5 to-transparent" />
     </div>
   );
 }
@@ -47,14 +48,38 @@ async function Contenu() {
   const session = await lireSessionJeu();
   if (!session) redirect("/jouer");
 
-  // Plus de tour disponible : on renvoie vers le résultat déjà obtenu.
   const restants = await toursRestants(session.participantId);
+
+  // Aucun tour disponible : le joueur a déjà son résultat. On le lui prépare
+  // et le composant client ouvrira la popup. ⚠️ Aucune redirection ici : une
+  // redirection automatique arrachait le joueur de la page sans qu'il l'ait
+  // demandé.
+  let tirageInitial = null;
+  let qrInitial: string | null = null;
+  let messagePerdu = "Pas de chance cette fois !";
+
   if (restants <= 0) {
     const [dernier] = await sql`
       SELECT id FROM tirages WHERE participant_id = ${session.participantId}
       ORDER BY created_at DESC, id DESC LIMIT 1
     `;
-    if (dernier) redirect(`/resultat?t=${dernier.id}`);
+    if (dernier) {
+      const tirage = await tirageParId(Number(dernier.id));
+      if (tirage) {
+        tirageInitial = tirage;
+        messagePerdu = (await lireParametres()).messagePerdu;
+        if (tirage.statut === "gagne" && tirage.code_unique) {
+          // Le QR est généré côté serveur : il s'affiche même si le client
+          // n'a pas de connexion stable au moment d'ouvrir la popup.
+          qrInitial = await QRCode.toDataURL(tirage.code_unique, {
+            errorCorrectionLevel: "M",
+            margin: 1,
+            width: 420,
+            color: { dark: "#0a0908", light: "#f8e7a8" },
+          });
+        }
+      }
+    }
   }
 
   const cadeaux = await chargerCadeauxRoue();
@@ -69,5 +94,15 @@ async function Contenu() {
     })),
   );
 
-  return <EcranRoue cases={cases} nom={session.nom} toursRestants={restants} />;
+  return (
+    <EcranRoue
+      cases={cases}
+      nom={session.nom}
+      toursRestants={restants}
+      tirageInitial={tirageInitial}
+      qrInitial={qrInitial}
+      messagePerdu={messagePerdu}
+      boutique={{ nom: boutique.nom, adresse: boutique.adresse, whatsapp: boutique.whatsapp }}
+    />
+  );
 }

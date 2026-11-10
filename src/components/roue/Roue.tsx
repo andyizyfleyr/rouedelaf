@@ -54,6 +54,12 @@ export type RoueProps = {
   onFin?: () => void;
   /** Largeur maximale en pixels. */
   taille?: number;
+  /**
+   * Plein écran : la roue prend la plus grande dimension carrée possible
+   * (`min(100vw, 100dvh)`), sans jamais dépasser l'écran ni créer de
+   * défilement. Le titre et le bouton se superposent par-dessus.
+   */
+  pleinEcran?: boolean;
   className?: string;
 };
 
@@ -78,6 +84,7 @@ export function Roue({
   duree = 6.5,
   onFin,
   taille,
+  pleinEcran = false,
   className,
 }: RoueProps) {
   const rotation = useMotionValue(0);
@@ -186,7 +193,26 @@ export function Roue({
   return (
     <div
       className={`relative mx-auto aspect-square w-full select-none ${className ?? ""}`}
-      style={{ maxWidth: taille ?? 350 }}
+      style={
+        pleinEcran
+          ? {
+              // Le plus grand carré qui tient DANS LA PLACE RESTANTE : largeur
+              // pleine, mais jamais plus haut que le conteneur (aspect-ratio +
+              // max-height font réduire la largeur automatiquement). C'est ce
+              // qui fait que la roue occupe vraiment l'écran, sans jamais
+              // provoquer de défilement ni passer sous le bouton.
+              // `100vw` / `100dvh` : la roue ignore les marges de la page et
+              // se cale directement sur l'écran. `dvh` tient compte de la
+              // barre d'adresse des navigateurs mobiles.
+              // Le plus grand carré possible : toute la largeur de l'écran,
+              // mais jamais plus haut que la place laissée par le titre et le
+              // bouton (`- 132px`). `dvh` gère la barre d'adresse mobile.
+              width: "min(100vw, calc(100dvh - 120px))",
+              maxWidth: "none",
+              aspectRatio: "1 / 1",
+            }
+          : { maxWidth: taille ?? 350 }
+      }
     >
       {/* Halo : la roue semble éclairée par derrière */}
       <div

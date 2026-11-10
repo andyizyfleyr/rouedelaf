@@ -12,7 +12,10 @@ export async function lancerConfettis(opts: { intense?: boolean } = {}): Promise
 
   try {
     const charge = await import("canvas-confetti");
-    const confetti = charge.default;
+    // Canvas dédié, empilé SOUS la popup de résultat : les confettis
+    // décoraient l'écran mais passaient par-dessus le code et le QR, qui
+    // devenaient illisibles. Le canvas est créé une seule fois.
+    const confetti = charge.default.create(canvasConfettis(), { resize: true, useWorker: true });
     const couleurs = ["#e8c66a", "#f8e7a8", "#fff3c4", "#a9822b", "#ffffff", "#7c1d2e"];
     const duree = opts.intense ? 3200 : 1800;
     const fin = Date.now() + duree;
@@ -57,4 +60,26 @@ export async function lancerConfettis(opts: { intense?: boolean } = {}): Promise
   } catch (e) {
     console.warn("[confettis] indisponible", e);
   }
+}
+
+/**
+ * Canvas plein écran, mais avec un z-index volontairement BAS (1) : il reste
+ * sous la popup (z-50) et sous les cartes. `pointer-events: none` pour ne
+ * jamais intercepter un appui.
+ */
+function canvasConfettis(): HTMLCanvasElement {
+  const existant = document.getElementById("canvas-confettis") as HTMLCanvasElement | null;
+  if (existant) return existant;
+  const canvas = document.createElement("canvas");
+  canvas.id = "canvas-confettis";
+  Object.assign(canvas.style, {
+    position: "fixed",
+    inset: "0",
+    width: "100%",
+    height: "100%",
+    pointerEvents: "none",
+    zIndex: "1",
+  } satisfies Partial<CSSStyleDeclaration>);
+  document.body.appendChild(canvas);
+  return canvas;
 }

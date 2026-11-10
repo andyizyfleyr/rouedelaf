@@ -208,4 +208,39 @@ END $$;
 --  Attention : la règle « un tour par personne » disparaît avec le compte.
 --  La limite devient celle du stock, géré dans /admin/cadeaux.
 -- ----------------------------------------------------------------------------
+--  Idempotent : DROP NOT NULL sur une colonne déjà nullable ne fait rien.
 ALTER TABLE tirages ALTER COLUMN participant_id DROP NOT NULL;
+
+-- ----------------------------------------------------------------------------
+--  M5. Tirages anonymes : autoriser le tirage SANS participant en base
+--
+--  Deux verrous empêchaient un tirage anonyme d'exister :
+--
+--  1. `tirages_gain_coherent` exigeait un code sur un gain. Or le code est
+--     calculé à partir de `p_participant_id::text` : avec NULL, toute la
+--     concaténation devenait NULL et le CHECK rejetait l'insertion. Un client
+--     sur le poste de la boutique ne pouvait donc JAMAIS gagner (le tirage
+--     perdant, lui, passait). On rend l'expression NULL-safe :
+--     `coalesce(p_participant_id::text, '')`.
+--
+--  2. `tirages.participant_id` restait NOT NULL sur les bases existantes :
+--     c'est l'objet de la migration M4 ci-dessus.
+--
+--  La contrainte est recréée sous le même nom, sans perte de données.
+-- ----------------------------------------------------------------------------
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM pg_constraint
+     WHERE conname = 'tirages_gain_coherent'
+  ) THEN
+    ALTER TABLE tirages DROP CONSTRAINT tirages_gain_coherent;
+  END IF;
+
+  ALTER TABLE tirages
+    ADD CONSTRAINT tirages_gain_coherent CHECK (
+      (statut = 'gagne' AND cadeau_id IS NOT NULL AND code_unique IS NOT NULL)
+      OR (statut = 'perdu' AND cadeau_id IS NULL AND code_unique IS NULL)
+    );
+END $$;
+

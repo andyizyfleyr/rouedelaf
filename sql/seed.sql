@@ -20,8 +20,8 @@ INSERT INTO cadeaux (nom, description, stock, probabilite, couleur, icone, actif
   ('Crème hydratante',        'Soin visage 50 ml, peaux normales.',                   20, 10, '#B3122B', '🧴', true, 4),
   ('Stylo publicitaire',      'Un petit souvenir utile.',                             80, 26, '#0B5D3B', '🖊️', true, 5),
   ('Échantillon parfum',      'Miniature 5 ml de notre best-seller.',                 60, 20, '#B3122B', '🌸', true, 6),
-  ('Réduction 10 %',          'Sur votre prochain passage en boutique.',             200, 15, '#B3122B', '💸', true, 7),
-  ('Bon café offert',         'Un café ou un jus offert à votre prochaine visite.',   40, 20, '#0B5D3B', '☕', true, 8)
+  ('Réduction 10 %',          'Sur votre prochain passage en boutique.',             200, 15, '#B3122B', '💸', true, 8),
+  ('Bon café offert',         'Un café ou un jus offert à votre prochaine visite.',   40, 20, '#0B5D3B', '☕', true, 7)
 ON CONFLICT DO NOTHING;
 
 -- Remarque : la case « perdue » est une case de la roue SANS ligne cadeau

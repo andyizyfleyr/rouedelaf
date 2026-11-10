@@ -42,8 +42,30 @@ export const CASE_PERDUE: CadeauRoue = {
  *   ont alors des secteurs de même taille, donc toujours des centres distincts
  *   et sans ambiguïté pour l'aiguille (pas de superposition à 180°).
  */
+/**
+ * Ordonne les lots pour qu'aucune couleur ne se répète d'une case à l'autre.
+ *
+ * Sans cela, deux bordeaux voisins se lisaient comme une seule grande case :
+ * l'exploitant croyait à un bug d'affichage. On prend toujours, après une
+ * case, un lot d'une AUTRE couleur ; s'il n'en reste plus, on continue avec
+ * la même (le liseré or et le bord assombri prennent alors le relais).
+ *
+ * L'ordre d'origine est conservé quand il alterne déjà : c'est lui qui porte
+ * l'intention de l'exploitant (gros lot en haut, etc.).
+ */
+function alternerCouleurs(lots: CadeauRoue[]): CadeauRoue[] {
+  const restants = [...lots];
+  const ordonnes: CadeauRoue[] = [];
+  while (restants.length > 0) {
+    const precedente = ordonnes[ordonnes.length - 1]?.couleur?.toLowerCase();
+    const different = restants.findIndex((c) => c.couleur.toLowerCase() !== precedente);
+    ordonnes.push(...restants.splice(different === -1 ? 0 : different, 1));
+  }
+  return ordonnes;
+}
+
 export function construireCases(cadeaux: CadeauRoue[]): CadeauRoue[] {
-  const lots = cadeaux.filter((c) => c.probabilite > 0).map((c) => ({ ...c }));
+  const lots = alternerCouleurs(cadeaux.filter((c) => c.probabilite > 0).map((c) => ({ ...c })));
 
   if (lots.length === 0) {
     // Aucun lot : la roue ne sert à rien, mais elle doit rester géométriquement

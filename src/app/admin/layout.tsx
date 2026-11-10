@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { redirect } from "next/navigation";
 
 import { BarreAdmin } from "@/components/admin/BarreAdmin";
+import { lireIdentite } from "@/lib/identite";
 import { lireSessionAdmin } from "@/lib/session";
 
 /**
@@ -22,9 +23,12 @@ export default async function LayoutAdmin({ children }: { children: ReactNode })
   const session = await lireSessionAdmin();
   if (!session) redirect("/connexion?suite=/admin");
 
+  // Le nom de la boutique est le même partout, admin compris.
+  const identite = await lireIdentite();
+
   return (
     <div className="min-h-dvh bg-[#080706] text-creme">
-      <BarreAdmin />
+      <BarreAdmin nomBoutique={identite.nom} />
       <main className="mx-auto w-full max-w-7xl px-3 pb-16 sm:px-5 lg:pl-[16.5rem]">{children}</main>
     </div>
   );

@@ -27,7 +27,7 @@ const LIENS = [
 ];
 
 /** Barre de navigation de l'administration (responsive). */
-export function BarreAdmin() {
+export function BarreAdmin({ nomBoutique }: { nomBoutique: string }) {
   const chemin = usePathname();
   const [ouvert, setOuvert] = useState(false);
 
@@ -71,7 +71,7 @@ export function BarreAdmin() {
           <Link href="/admin" className="flex items-center gap-2">
             <span className="text-lg">🎡</span>
             <span className="font-titre text-[13px] font-semibold tracking-[0.14em] text-or-clair uppercase">
-              Administration
+              {nomBoutique}
             </span>
           </Link>
           <button
@@ -93,7 +93,7 @@ export function BarreAdmin() {
           <span className="text-xl">🎡</span>
           <div>
             <p className="font-titre text-[13px] font-semibold tracking-[0.12em] text-or-clair uppercase">
-              Roue de Noël
+              {nomBoutique}
             </p>
             <p className="text-[10px] tracking-[0.18em] text-cendre/60 uppercase">
               Administration

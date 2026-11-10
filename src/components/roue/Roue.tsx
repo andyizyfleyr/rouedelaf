@@ -89,6 +89,9 @@ type Secteur = {
   icone: string;
   /** Photo du cadeau : si elle est là, la case n'affiche QUE l'image. */
   image: string | null;
+  /** Voisin de gauche / de droite partage la même couleur (voir voile). */
+  memeGauche: boolean;
+  memeDroite: boolean;
   couleur: string;
   clair: string;
   fonce: string;
@@ -155,6 +158,12 @@ export function Roue({
         angle,
         milieu: debut + angle / 2,
         chemin: secteurPath(CENTRE, CENTRE, RAYON - 10, debut, debut + angle),
+        // Deux cases de même teinte côte à côte se lisaient comme UNE seule
+        // case deux fois plus large : l'exploitant croyait à un bug. On éclaire
+        // le bord mitoyen, et le liseré or fait la séparation.
+        memeGauche: i > 0 && normaliser(cases[i - 1].couleur) === normaliser(c.couleur),
+        memeDroite:
+          i < cases.length - 1 && normaliser(cases[i + 1]?.couleur) === normaliser(c.couleur),
       };
     });
   }, [cases]);
@@ -255,6 +264,27 @@ export function Roue({
         aria-label="Roue de Noël"
       >
         <defs>
+          {/*
+            Voiles de bord : quand deux cases voisines ont la MÊME couleur,
+            leur limite disparaît. Ce dégradé (du noir vers le transparent)
+            assombrit le bord mitoyen : les deux cases redeviennent deux cases.
+          */}
+          {secteurs.map((s) =>
+            s.memeGauche || s.memeDroite ? (
+              <linearGradient
+                key={`bord-${s.cle}`}
+                id={`b-${s.cle}`}
+                x1={s.memeGauche ? "0" : "1"}
+                y1="0"
+                x2={s.memeGauche ? "1" : "0"}
+                y2="0"
+              >
+                <stop offset="0%" stopColor="#000000" stopOpacity="0.62" />
+                <stop offset="55%" stopColor="#000000" stopOpacity="0" />
+              </linearGradient>
+            ) : null,
+          )}
+
           {secteurs.map((s) => (
             <linearGradient
               key={`grad-${s.cle}`}
@@ -371,6 +401,11 @@ export function Roue({
               {/* Voile laqué : un dégradé clair en haut du secteur seulement —
                   deux tons suffisent, au-delà la roue devient illisible. */}
               <path d={s.chemin} fill="url(#voile)" opacity="0.5" />
+              {/* Bord mitoyen assombri : deux cases de même couleur restent
+                  deux cases distinctes. */}
+              {(s.memeGauche || s.memeDroite) && (
+                <path d={s.chemin} fill={`url(#b-${s.cle})`} />
+              )}
             </g>
           ))}
 
@@ -577,8 +612,14 @@ export function Roue({
               onLancer?.();
             }
           }}
-          style={{ cursor: cliquable && !enMouvement ? "pointer" : "default" }}
           className={cliquable ? "moyeu-bouton" : undefined}
+          style={{
+            cursor: cliquable && !enMouvement ? "pointer" : "default",
+            // Le carré de focus du navigateur s'affichait autour de la boule
+            // et jurait avec la jante : le focus est rendu par le halo SVG
+            // (voir .moyeu-bouton:focus-visible dans globals.css).
+            outline: "none",
+          }}
         >
           <circle cx={CENTRE} cy={CENTRE} r={40} fill="url(#jante)" />
           <circle cx={CENTRE} cy={CENTRE} r={34} fill="url(#moyeu)" />
@@ -791,6 +832,11 @@ function point(cx: number, cy: number, rayon: number, deg: number) {
  * `data:` saisie par erreur (ou par malveillance) ne doit jamais finir dans un
  * attribut `href` du SVG. Une valeur refusée retombe proprement sur le texte.
  */
+/** Couleur comparable : « #B3122B » et « #b3122b » sont la même teinte. */
+function normaliser(couleur: string): string {
+  return couleur.trim().toLowerCase();
+}
+
 function imageAffichable(url: string | null | undefined): string | null {
   if (!url) return null;
   const valeur = url.trim();

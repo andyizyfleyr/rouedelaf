@@ -37,7 +37,7 @@ type Flux = {
 
 const INTERVALLE_MS = 8_000;
 
-export function EcranBoutique({ modeHtml }: { modeHtml: boolean }) {
+export function EcranBoutique({ modeHtml, nomBoutique }: { modeHtml: boolean; nomBoutique: string }) {
   const [flux, setFlux] = useState<Flux | null>(null);
   const [nouveaux, setNouveaux] = useState<Set<number>>(new Set());
   const [connecte, setConnecte] = useState(true);
@@ -125,7 +125,7 @@ export function EcranBoutique({ modeHtml }: { modeHtml: boolean }) {
               Gagnants du jour
             </h1>
             <p className="text-[11.5px] tracking-[0.18em] text-cendre/60 uppercase">
-              Roue de Noël · {process.env.NEXT_PUBLIC_BOUTIQUE_NOM ?? "Boutique"}
+              Roue de Noël · {nomBoutique}
             </p>
           </div>
         </div>

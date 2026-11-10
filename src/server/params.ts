@@ -11,6 +11,8 @@ import { sql } from "@/lib/db";
  */
 
 export type Parametres = {
+  boutiqueNom: string;
+  boutiqueAdresse: string;
   dureeValiditeCodeJours: number;
   activeJeu: boolean;
   messagePerdu: string;
@@ -26,6 +28,8 @@ export type Parametres = {
  * gênent personne) mais ne sont plus lues.
  */
 const DEFAUTS: Parametres = {
+  boutiqueNom: process.env.NEXT_PUBLIC_BOUTIQUE_NOM || "Ma Boutique",
+  boutiqueAdresse: process.env.NEXT_PUBLIC_BOUTIQUE_ADRESSE || "Cotonou, Bénin",
   dureeValiditeCodeJours: 14,
   activeJeu: true,
   messagePerdu:
@@ -63,6 +67,8 @@ export const lireParametres: () => Promise<Parametres> = cache(async (): Promise
     };
 
     const valeur: Parametres = {
+      boutiqueNom: (map.get("boutique_nom") ?? "").trim() || DEFAUTS.boutiqueNom,
+      boutiqueAdresse: (map.get("boutique_adresse") ?? "").trim() || DEFAUTS.boutiqueAdresse,
       dureeValiditeCodeJours: nombre(
         "duree_validite_code_jours",
         DEFAUTS.dureeValiditeCodeJours,

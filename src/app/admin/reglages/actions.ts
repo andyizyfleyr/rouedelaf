@@ -12,6 +12,8 @@ import { journaliser } from "@/server/data";
 export type EtatReglages = { ok?: boolean; message?: string; erreur?: string };
 
 const schema = z.object({
+  boutiqueNom: z.string().trim().min(1, "Le nom de la boutique est obligatoire.").max(60),
+  boutiqueAdresse: z.string().trim().max(120),
   dureeValiditeCodeJours: z.coerce.number().int().min(1).max(365),
   reductionConsolation: z.coerce.number().int().min(0).max(100),
   messagePerdu: z.string().trim().max(500),
@@ -29,6 +31,8 @@ export async function actionEnregistrerReglages(
   }
 
   const analyse = schema.safeParse({
+    boutiqueNom: formData.get("boutiqueNom"),
+    boutiqueAdresse: formData.get("boutiqueAdresse"),
     dureeValiditeCodeJours: formData.get("dureeValiditeCodeJours"),
     reductionConsolation: formData.get("reductionConsolation"),
     messagePerdu: formData.get("messagePerdu"),
@@ -42,6 +46,8 @@ export async function actionEnregistrerReglages(
   const d = analyse.data;
   try {
     await Promise.all([
+      ecrireParametre("boutique_nom", d.boutiqueNom),
+      ecrireParametre("boutique_adresse", d.boutiqueAdresse),
       ecrireParametre("duree_validite_code_jours", String(d.dureeValiditeCodeJours)),
       ecrireParametre("reduction_consolation", String(d.reductionConsolation)),
       ecrireParametre("message_perdu", d.messagePerdu || "Pas de chance cette fois !"),
@@ -50,8 +56,9 @@ export async function actionEnregistrerReglages(
     await journaliser("reglages_modifies", { ...d });
     // Les réglages sont lus à chaque rendu (mémoïsation par requête
     // uniquement, voir src/server/params.ts) : rafraîchir les pages suffit.
-    revalidatePath("/admin");
-    revalidatePath("/roue");
+    // Le nom s'affiche sur TOUTES les pages (titre, bandeau, borne, écran) :
+    // on rafraîchit l'ensemble plutôt que la seule page courante.
+    revalidatePath("/", "layout");
     return { ok: true, message: "Réglages enregistrés." };
   } catch (e) {
     console.error("[admin] réglages", e);

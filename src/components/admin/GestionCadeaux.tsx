@@ -32,7 +32,14 @@ import type { Cadeau } from "@/lib/types";
  * Gestion du catalogue : liste + formulaire d'édition en panneau glissant.
  * Toutes les écritures passent par des Server Actions protégées.
  */
-export function GestionCadeaux({ cadeaux }: { cadeaux: Cadeau[] }) {
+export function GestionCadeaux({
+  cadeaux,
+  galerie = [],
+}: {
+  cadeaux: Cadeau[];
+  /** Photos déjà envoyées, proposées en un clic. */
+  galerie?: string[];
+}) {
   const [edition, setEdition] = useState<Cadeau | "nouveau" | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [erreur, setErreur] = useState<string | null>(null);
@@ -117,6 +124,7 @@ export function GestionCadeaux({ cadeaux }: { cadeaux: Cadeau[] }) {
         {edition && (
           <PanneauFormulaire
             cadeau={edition === "nouveau" ? null : edition}
+            galerie={galerie}
             onFermer={() => setEdition(null)}
             onSucces={(msg) => {
               setEdition(null);
@@ -307,10 +315,13 @@ const COULEURS = [
 
 function PanneauFormulaire({
   cadeau,
+  galerie,
   onFermer,
   onSucces,
 }: {
   cadeau: Cadeau | null;
+  /** Photos déjà envoyées (table images_cadeaux), proposées en un clic. */
+  galerie: string[];
   onFermer: () => void;
   onSucces: (message: string) => void;
 }) {
@@ -323,6 +334,17 @@ function PanneauFormulaire({
   const [icone, setIcone] = useState(cadeau?.icone ?? "🎁");
   const [imageUrl, setImageUrl] = useState(cadeau?.image_url ?? "");
   const [imageCasse, setImageCasse] = useState(false);
+  const [photo, setPhoto] = useState<File | null>(null);
+  /**
+   * Aperçu de la photo choisie. L'URL d'objet est calculée PENDANT le rendu
+   * (et révoquée à l'ouverture suivante) : un effet qui appellerait
+   * setState serait un rendu supplémentaire inutile, et la règle
+   * react-hooks/set-state-in-effect le refuse.
+   */
+  const apercuLocal = useMemo(() => (photo ? URL.createObjectURL(photo) : null), [photo]);
+  useEffect(() => () => {
+    if (apercuLocal) URL.revokeObjectURL(apercuLocal);
+  }, [apercuLocal]);
 
   useEffect(() => {
     if (etat.ok) onSucces(etat.message ?? "Cadeau enregistré.");
@@ -496,9 +518,7 @@ function PanneauFormulaire({
           </div>
 
           <div>
-            <label htmlFor="imageUrl" className="etiquette">
-              Image du cadeau (URL, facultatif)
-            </label>
+            <span className="etiquette">Image du cadeau (facultatif)</span>
             {/*
               Règle d'affichage de la roue : une case montre SOIT le texte, SOIT
               la photo. L'exploitant doit le savoir au moment de choisir, sinon
@@ -513,6 +533,62 @@ function PanneauFormulaire({
                 le nom reste écrit dessus en petit.
               </span>
             </p>
+            {/*
+              1) Galerie : les photos déjà envoyées apparaissent en un clic.
+                 C'est le cas courant en boutique — on prépare les visuels une
+                 fois, puis on les choisit sans recharger de fichier.
+            */}
+            {galerie.length > 0 && (
+              <div className="mb-2 flex gap-1.5 overflow-x-auto pb-1">
+                {galerie.map((src) => (
+                  <button
+                    key={src}
+                    type="button"
+                    onClick={() => {
+                      setImageUrl(src);
+                      setPhoto(null);
+                      setImageCasse(false);
+                    }}
+                    className={`size-12 shrink-0 overflow-hidden rounded-lg border-2 ${
+                      imageUrl === src ? "border-or" : "border-white/10 hover:border-white/30"
+                    }`}
+                    aria-label={`Utiliser ${src}`}
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={src} alt="" className="size-full object-cover" />
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {/* 2) Photo depuis le téléphone / l'ordinateur. */}
+            <label
+              htmlFor="photo"
+              className="flex cursor-pointer items-center justify-center gap-2 rounded-xl border border-dashed border-or/40 bg-or/5 px-3 py-3 text-[12.5px] text-creme transition-colors hover:border-or/70 hover:bg-or/10"
+            >
+              <ImageIcon className="size-4 text-or" />
+              {photo ? photo.name : "Choisir une photo sur cet appareil"}
+              <input
+                id="photo"
+                name="photo"
+                type="file"
+                accept="image/png,image/jpeg,image/webp,image/gif"
+                className="sr-only"
+                onChange={(e) => {
+                  const f = e.target.files?.[0] ?? null;
+                  setPhoto(f);
+                  setImageCasse(false);
+                  if (f) setImageUrl("");
+                }}
+              />
+            </label>
+            {photo && (
+              <p className="mt-1 text-[10.5px] text-cendre/50">
+                {(photo.size / 1024).toFixed(0)} ko · enregistrée à l&apos;envoi du formulaire
+              </p>
+            )}
+
+            {/* 3) Sinon, image déjà en ligne. */}
             <input
               id="imageUrl"
               name="imageUrl"
@@ -520,11 +596,20 @@ function PanneauFormulaire({
               onChange={(e) => {
                 setImageUrl(e.target.value);
                 setImageCasse(false);
+                if (e.target.value) setPhoto(null);
               }}
-              className="champ"
-              placeholder="https://…/cadeau.jpg"
+              className="champ mt-2"
+              placeholder="… ou coller un lien d'image (https://…)"
+              aria-label="Lien de l'image du cadeau"
             />
-            {imageUrl && (
+            {apercuLocal && (
+              <div className="mt-2 flex items-center gap-2 rounded-lg border border-white/10 bg-black/30 p-2">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={apercuLocal} alt="Aperçu" className="size-10 rounded object-cover" />
+                <span className="text-[10.5px] text-cendre/55">Aperçu de votre photo</span>
+              </div>
+            )}
+            {imageUrl && !photo && (
               <div className="mt-2 flex items-center gap-2 rounded-lg border border-white/10 bg-black/30 p-2">
                 {imageCasse ? (
                   <span className="flex items-center gap-1.5 text-[11px] text-amber-200">

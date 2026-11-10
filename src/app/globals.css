@@ -362,11 +362,16 @@ body {
 }
 
 /* Liseré qui respire sur la boule elle-même (2e indice, plus discret). */
-.moyeu-bouton:focus-visible { outline: none; }
+/* Aucun carré de focus : cliquer la boule ne doit rien faire apparaître
+   d'autre qu'un halo doré autour du moyeu. */
+.moyeu-bouton { outline: none !important; -webkit-tap-highlight-color: transparent; }
+.moyeu-bouton:focus { outline: none !important; }
+.moyeu-bouton:focus-visible { outline: none !important; }
 .moyeu-bouton:focus-visible circle:first-of-type {
   stroke: #fff3c4;
   stroke-width: 3.5;
 }
+svg [tabindex]:focus, svg [role="button"]:focus { outline: none !important; }
 
 @media (prefers-reduced-motion: reduce) {
   .moyeu-halo { animation: none; opacity: 0.7; }

@@ -3,6 +3,7 @@ import { Suspense } from "react";
 import { GestionCadeaux } from "@/components/admin/GestionCadeaux";
 import { TitreOr } from "@/components/ui/Base";
 import { listerCadeauxAdmin } from "@/server/data";
+import { listerImages } from "@/server/images";
 
 export const metadata = { title: "Cadeaux" };
 
@@ -30,6 +31,6 @@ export default function PageCadeaux() {
 }
 
 async function Contenu() {
-  const cadeaux = await listerCadeauxAdmin();
-  return <GestionCadeaux cadeaux={cadeaux} />;
+  const [cadeaux, galerie] = await Promise.all([listerCadeauxAdmin(), listerImages()]);
+  return <GestionCadeaux cadeaux={cadeaux} galerie={galerie} />;
 }

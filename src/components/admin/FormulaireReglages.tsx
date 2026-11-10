@@ -48,6 +48,27 @@ export function FormulaireReglages({
             />
           </label>
 
+          {/* Identité de la boutique : ce nom s'affiche partout (bandeau,
+              titre du navigateur, borne, écran boutique). Il est en base et
+              non plus dans une variable d'environnement, donc modifiable sans
+              redéploiement. */}
+          <div className="grid gap-3 sm:grid-cols-2">
+            <Champ
+              name="boutiqueNom"
+              libelle="Nom de la boutique"
+              valeur={parametres.boutiqueNom}
+              texte
+              aide="Affiché partout : borne, roue, écran, titre du navigateur"
+            />
+            <Champ
+              name="boutiqueAdresse"
+              libelle="Adresse / ville"
+              valeur={parametres.boutiqueAdresse}
+              texte
+              aide="Pied de page et écran de la borne"
+            />
+          </div>
+
           <div className="grid gap-3 sm:grid-cols-2">
             <Champ
               name="dureeValiditeCodeJours"
@@ -140,13 +161,16 @@ function Champ({
   min,
   max,
   aide,
+  texte = false,
 }: {
   name: string;
   libelle: string;
-  valeur: number;
-  min: number;
-  max: number;
-  aide: string;
+  valeur: number | string;
+  min?: number;
+  max?: number;
+  aide?: string;
+  /** Champ libre (nom, adresse) au lieu d'un nombre. */
+  texte?: boolean;
 }) {
   return (
     <div>
@@ -156,9 +180,10 @@ function Champ({
       <input
         id={name}
         name={name}
-        type="number"
-        min={min}
-        max={max}
+        type={texte ? "text" : "number"}
+        min={texte ? undefined : min}
+        max={texte ? undefined : max}
+        maxLength={texte ? 120 : undefined}
         defaultValue={valeur}
         className="champ"
       />

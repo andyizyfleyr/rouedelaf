@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
 import { exigerAdmin } from "@/lib/session";
+import { enregistrerImage, TAILLE_IMAGE_MAX, TYPES_IMAGE } from "@/server/images";
 import {
   ajusterStock,
   basculerActifCadeau,
@@ -22,6 +23,25 @@ import {
  */
 
 export type EtatAction = { ok?: boolean; erreur?: string; message?: string };
+
+/**
+ * Enregistre la photo choisie dans l'admin.
+ *
+ * La photo vit EN BASE (table `images_cadeaux`) et non sur le disque : sur
+ * Vercel le disque est en lecture seule sauf /tmp, qui n'est pas servi par le
+ * CDN — un fichier aurait disparu au redéploiement suivant. Voir
+ * src/server/images.ts. Le navigateur réduit déjà l'image à ~150 ko.
+ */
+async function enregistrerPhoto(fichier: File): Promise<{ url?: string; erreur?: string }> {
+  if (!TYPES_IMAGE[fichier.type]) {
+    return { erreur: "Format non pris en charge : utilisez un JPG, PNG, WEBP ou GIF." };
+  }
+  if (fichier.size > TAILLE_IMAGE_MAX) {
+    return { erreur: "Image trop lourde : 3 Mo maximum." };
+  }
+  const resultat = await enregistrerImage(Buffer.from(await fichier.arrayBuffer()), fichier.type);
+  return "url" in resultat ? { url: resultat.url } : { erreur: resultat.erreur };
+}
 
 const schemaCadeau = z.object({
   nom: z.string().trim().min(2, "Nom trop court.").max(80, "Nom trop long."),
@@ -58,6 +78,20 @@ function lireFormulaire(formData: FormData) {
   });
 }
 
+/** Photo uploadée prioritaire ; sinon l'URL saisie (ou vide). */
+async function choisirImage(
+  formData: FormData,
+  imageUrl: string | null | undefined,
+): Promise<{ imageUrl: string | null; erreur?: string }> {
+  const fichier = formData.get("photo");
+  if (fichier instanceof File && fichier.size > 0) {
+    const resultat = await enregistrerPhoto(fichier);
+    if (resultat.erreur) return { imageUrl: null, erreur: resultat.erreur };
+    return { imageUrl: resultat.url ?? null };
+  }
+  return { imageUrl: imageUrl || null };
+}
+
 export async function actionCreerCadeau(
   _etat: EtatAction,
   formData: FormData,
@@ -70,23 +104,26 @@ export async function actionCreerCadeau(
 
   const analyse = lireFormulaire(formData);
   if (!analyse.success) {
-    return { erreur: analyse.error.issues[0]?.message ?? "Données invalides." };
+    return { erreur: analyse.error.issues[0]?.message ?? "Valeurs invalides." };
   }
+
+  const image = await choisirImage(formData, analyse.data.imageUrl);
+  if (image.erreur) return { erreur: image.erreur };
 
   try {
     await creerCadeau({
       ...analyse.data,
       description: analyse.data.description ?? null,
-      imageUrl: analyse.data.imageUrl ?? null,
+      imageUrl: image.imageUrl,
       actif: analyse.data.actif ?? true,
     });
     await journaliser("cadeau_cree", { nom: analyse.data.nom });
     revalidatePath("/admin/cadeaux");
     revalidatePath("/roue");
-    return { ok: true, message: `« ${analyse.data.nom} » ajouté.` };
+    return { ok: true, message: "Cadeau ajouté." };
   } catch (e) {
     console.error("[admin] création cadeau", e);
-    return { erreur: "Impossible d'ajouter ce cadeau." };
+    return { erreur: "Création impossible." };
   }
 }
 
@@ -100,52 +137,68 @@ export async function actionModifierCadeau(
     return { erreur: "Session expirée. Reconnectez-vous." };
   }
 
-  const id = Number(formData.get("id"));
-  if (!Number.isFinite(id)) return { erreur: "Cadeau introuvable." };
+  const id = z.coerce.number().int().positive().safeParse(formData.get("id"));
+  if (!id.success) return { erreur: "Cadeau introuvable." };
 
   const analyse = lireFormulaire(formData);
   if (!analyse.success) {
-    return { erreur: analyse.error.issues[0]?.message ?? "Données invalides." };
+    return { erreur: analyse.error.issues[0]?.message ?? "Valeurs invalides." };
   }
 
+  const image = await choisirImage(formData, analyse.data.imageUrl);
+  if (image.erreur) return { erreur: image.erreur };
+
   try {
-    await modifierCadeau(id, {
+    await modifierCadeau(id.data, {
       ...analyse.data,
       description: analyse.data.description ?? null,
-      imageUrl: analyse.data.imageUrl ?? null,
+      imageUrl: image.imageUrl,
       actif: analyse.data.actif ?? true,
     });
-    await journaliser("cadeau_modifie", { id, nom: analyse.data.nom });
+    await journaliser("cadeau_modifie", { id: id.data, nom: analyse.data.nom });
     revalidatePath("/admin/cadeaux");
     revalidatePath("/roue");
-    return { ok: true, message: "Cadeau mis à jour." };
+    return { ok: true, message: "Cadeau modifié." };
   } catch (e) {
     console.error("[admin] modification cadeau", e);
-    return { erreur: "Impossible de modifier ce cadeau." };
+    return { erreur: "Modification impossible." };
   }
 }
 
 export async function actionBasculerActif(id: number, actif: boolean): Promise<EtatAction> {
-  await exigerAdmin();
-  await basculerActifCadeau(id, actif);
-  revalidatePath("/admin/cadeaux");
-  revalidatePath("/roue");
-  return { ok: true, message: actif ? "Cadeau activé." : "Cadeau désactivé." };
+  try {
+    await exigerAdmin();
+    await basculerActifCadeau(id, actif);
+    revalidatePath("/admin/cadeaux");
+    revalidatePath("/roue");
+    return { ok: true };
+  } catch {
+    return { erreur: "Action impossible." };
+  }
 }
 
 export async function actionAjusterStock(id: number, delta: number): Promise<EtatAction> {
-  await exigerAdmin();
-  const stock = await ajusterStock(id, delta);
-  revalidatePath("/admin/cadeaux");
-  revalidatePath("/roue");
-  return { ok: true, message: `Stock : ${stock}` };
+  try {
+    await exigerAdmin();
+    await ajusterStock(id, delta);
+    revalidatePath("/admin/cadeaux");
+    revalidatePath("/roue");
+    return { ok: true };
+  } catch {
+    return { erreur: "Ajustement impossible." };
+  }
 }
 
 export async function actionSupprimerCadeau(id: number): Promise<EtatAction> {
-  await exigerAdmin();
-  const resultat = await supprimerCadeau(id);
-  if (!resultat.ok) return { erreur: resultat.raison ?? "Suppression impossible." };
-  revalidatePath("/admin/cadeaux");
-  revalidatePath("/roue");
-  return { ok: true, message: "Cadeau supprimé." };
+  try {
+    await exigerAdmin();
+    await supprimerCadeau(id);
+    await journaliser("cadeau_supprime", { id });
+    revalidatePath("/admin/cadeaux");
+    revalidatePath("/roue");
+    return { ok: true, message: "Cadeau supprimé." };
+  } catch (e) {
+    console.error("[admin] suppression cadeau", e);
+    return { erreur: "Suppression impossible : le cadeau est peut-être déjà gagné." };
+  }
 }

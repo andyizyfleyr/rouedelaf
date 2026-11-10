@@ -1,6 +1,7 @@
 import QRCode from "qrcode";
 import { EcranBorne } from "@/components/client/EcranBorne";
 import { boutique } from "@/lib/env";
+import { lireIdentite } from "@/lib/identite";
 import { fluxBorne } from "@/server/data";
 
 export const metadata = { title: "Borne d'accueil" };
@@ -30,6 +31,7 @@ export const instant = false;
  * Le QR est rendu côté serveur : il reste net même sur un écran 4K.
  */
 export default async function PageBorne() {
+  const identite = await lireIdentite();
   const url = `${boutique.appUrl}/roue`;
 
   const qr = await QRCode.toDataURL(url, {
@@ -54,8 +56,8 @@ export default async function PageBorne() {
     <EcranBorne
       qr={qr}
       url={url}
-      nomBoutique={boutique.nom}
-      adresse={boutique.adresse}
+      nomBoutique={identite.nom}
+      adresse={identite.adresse}
       initial={initial}
     />
   );

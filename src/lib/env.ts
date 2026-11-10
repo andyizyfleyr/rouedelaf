@@ -70,7 +70,10 @@ export const env = {
   },
 };
 
-/** Infos boutique exposées au navigateur (préfixe NEXT_PUBLIC_ obligatoire). */
+/** Infos boutique exposées au navigateur (préfixe NEXT_PUBLIC_ obligatoire).
+ *  ⚠️ Le NOM n'est plus lu ici : il est réglé dans l'admin et lu en base
+ *  (`lireIdentite`, src/lib/identite.ts). Cette constante ne sert plus que de
+ *  secours quand la base est injoignable. */
 export const boutique = {
   nom: optionnel("NEXT_PUBLIC_BOUTIQUE_NOM", "Ma Boutique"),
   adresse: optionnel("NEXT_PUBLIC_BOUTIQUE_ADRESSE", "Cotonou, Bénin"),

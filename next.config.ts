@@ -12,6 +12,15 @@ const nextConfig: NextConfig = {
   cacheComponents: true,
   partialPrefetching: true,
 
+  experimental: {
+    serverActions: {
+      // Upload d'une photo de cadeau depuis /admin/cadeaux. Le navigateur
+      // réduit l'image à ~150 ko, mais on garde de la marge : la limite par
+      // défaut (1 Mo) refuserait une photo de téléphone non redimensionnée.
+      bodySizeLimit: "4mb",
+    },
+  },
+
   images: {
     remotePatterns: [
       { protocol: "https", hostname: "**.public.blob.vercel-storage.com" },

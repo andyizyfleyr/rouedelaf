@@ -2,6 +2,7 @@ import { Suspense } from "react";
 import { redirect } from "next/navigation";
 
 import { EcranBoutique } from "@/components/admin/EcranBoutique";
+import { lireIdentite } from "@/lib/identite";
 import { lireSessionAdmin } from "@/lib/session";
 
 export const metadata = { title: "Écran boutique" };
@@ -28,7 +29,8 @@ async function Contenu({
   if (!session) redirect("/connexion?suite=/admin/ecran");
 
   const parametres = await searchParams;
-  return <EcranBoutique modeHtml={parametres.mode === "html"} />;
+  const identite = await lireIdentite();
+  return <EcranBoutique modeHtml={parametres.mode === "html"} nomBoutique={identite.nom} />;
 }
 
 function FondEcran() {

@@ -6,6 +6,12 @@ import { boutique } from "@/lib/env";
 
 import "./globals.css";
 
+/**
+ * Métadonnées statiques (nom de secours, variable d'environnement).
+ * Le nom réglé dans l'admin est appliqué, lui, par <TitreBoutique /> côté
+ * client : `generateMetadata` qui lit la base bloquerait le prérendu
+ * (erreur « metadata is blocked » avec cacheComponents).
+ */
 export const metadata: Metadata = {
   title: {
     default: `${boutique.nom} — Roue de Noël`,

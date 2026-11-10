@@ -123,7 +123,7 @@ async function executerBrut(texte: string, parametres: unknown[]): Promise<Ligne
 let schemaPret = false;
 let verificationEnCours: Promise<void> | null = null;
 /** Version de schéma déjà appliquée par ce processus (voir MIGRATIONS). */
-const VERSION_SCHEMA = 8;
+const VERSION_SCHEMA = 9;
 
 async function verifierSchema(): Promise<void> {
   if (schemaPret) return;

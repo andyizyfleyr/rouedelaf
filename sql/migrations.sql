@@ -284,3 +284,30 @@ BEGIN
         OR (nom ILIKE '%café%'           AND couleur NOT IN ('#D4AF37', '#B3122B', '#0B5D3B'));
   END IF;
 END $$;
+
+-- ----------------------------------------------------------------------------
+--  M7. Photos de cadeaux stockées en base (upload depuis l'admin)
+--
+--  Pourquoi en base : sur Vercel, le disque est en lecture seule sauf /tmp,
+--  et /tmp n'est pas servi par le CDN. Un fichier uploadé aurait donc
+--  disparu au redéploiement suivant. La photo est réduite côté navigateur
+--  (JPEG ~140 ko) puis rangée dans `images_cadeaux`, servie par
+--  /api/image/[nom] — même origine que la roue, donc aucun réglage CORS ni
+--  de domaine à autoriser dans next.config.
+-- ----------------------------------------------------------------------------
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM information_schema.tables
+                  WHERE table_schema = 'public' AND table_name = 'images_cadeaux') THEN
+    CREATE TABLE images_cadeaux (
+      nom         text PRIMARY KEY,
+      type        text NOT NULL,
+      donnees     bytea NOT NULL,
+      taille      integer NOT NULL,
+      cree_le     timestamptz NOT NULL DEFAULT now()
+    );
+
+    -- Une image n'est pas un réglage : on la supprime avec le lot qui la
+    -- référence (pas de FK, mais l'entretien se fait dans /admin/cadeaux).
+    COMMENT ON TABLE images_cadeaux IS 'Photos de cadeaux uploadées depuis l''admin.';
+  END IF;
+END $$;

@@ -1,7 +1,8 @@
-import type { ReactNode } from "react";
+import { Suspense, type ReactNode } from "react";
 
-import { boutique } from "@/lib/env";
+import { lireIdentite } from "@/lib/identite";
 import { CadreJeu } from "@/components/client/BarreJeu";
+import { TitreBoutique } from "@/components/client/TitreBoutique";
 
 /**
  * Gabarit des pages client. Le fond « velours » est fourni par le layout
@@ -11,7 +12,31 @@ import { CadreJeu } from "@/components/client/BarreJeu";
  */
 export default function LayoutClient({ children }: { children: ReactNode }) {
   return (
-    <CadreJeu nom={boutique.nom} pied={`${boutique.adresse} · Un cadeau par personne`}>
+    <Suspense
+      fallback={
+        <CadreJeu nom={process.env.NEXT_PUBLIC_BOUTIQUE_NOM || "Ma Boutique"} pied="">
+          {children}
+        </CadreJeu>
+      }
+    >
+      <Identite>{children}</Identite>
+    </Suspense>
+  );
+}
+
+/**
+ * Lit le nom de la boutique EN BASE (réglable dans l'admin).
+ *
+ * Cette lecture est dynamique : elle est donc isolée derrière un `<Suspense>`,
+ * sinon Next refuse de prérendre la page (erreur « uncached data during
+ * prerendering »). Le repli affiche la coquille avec le nom de secours, que
+ * la vraie valeur remplace dès que la base a répondu.
+ */
+async function Identite({ children }: { children: ReactNode }) {
+  const identite = await lireIdentite();
+  return (
+    <CadreJeu nom={identite.nom} pied={`${identite.adresse} · Un cadeau par personne`}>
+      <TitreBoutique nom={identite.nom} />
       {children}
     </CadreJeu>
   );

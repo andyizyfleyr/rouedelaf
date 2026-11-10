@@ -86,7 +86,7 @@ CREATE TABLE IF NOT EXISTS cadeaux (
   image_url    text,
   stock        integer NOT NULL DEFAULT 0,
   probabilite  numeric(6,2) NOT NULL DEFAULT 0,
-  couleur      text NOT NULL DEFAULT '#D4A017',
+  couleur      text NOT NULL DEFAULT '#B3122B',
   icone        text NOT NULL DEFAULT '🎁',     -- emoji affiché sur la roue
   actif        boolean NOT NULL DEFAULT true,
   ordre        integer NOT NULL DEFAULT 0,     -- ordre d'affichage sur la roue

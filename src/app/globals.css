@@ -1,0 +1,274 @@
+@import "tailwindcss";
+@import "@fontsource/cinzel/400.css";
+@import "@fontsource/cinzel/600.css";
+@import "@fontsource/cinzel/700.css";
+@import "@fontsource-variable/manrope";
+
+/* ==========================================================================
+   ROUE DE LA FORTUNE — design system « casino de luxe »
+   Fond sombre, or, dégradés, halos de lumière. Mobile first.
+   ========================================================================== */
+
+@theme {
+  /* Palette */
+  --color-nuit: #0a0908;
+  --color-nuit-2: #121010;
+  --color-nuit-3: #1a1715;
+  --color-braise: #2a2320;
+
+  --color-or: #e8c66a;
+  --color-or-clair: #f8e7a8;
+  --color-or-fonce: #a9822b;
+  --color-or-brillant: #fff3c4;
+
+  --color-bordeaux: #7c1d2e;
+  --color-bordeaux-clair: #a52a3f;
+  --color-emeraude: #1f6f5c;
+
+  --color-creme: #f6efe1;
+  --color-cendre: #b9b0a2;
+
+  /* Polices */
+  --font-titre: "Cinzel", "Times New Roman", serif;
+  --font-texte: "Manrope Variable", "Manrope", system-ui, sans-serif;
+
+  /* Rayons & ombres */
+  --radius-carte: 1.25rem;
+  --shadow-or: 0 18px 60px -18px rgba(232, 198, 106, 0.55);
+  --shadow-carte: 0 24px 70px -30px rgba(0, 0, 0, 0.95);
+
+  /* Animations */
+  --animate-scintille: scintille 3.2s ease-in-out infinite;
+  --animate-flotte: flotte 7s ease-in-out infinite;
+  --animate-pouls-or: poulsOr 2.4s ease-in-out infinite;
+  --animate-defile: defile 25s linear infinite;
+}
+
+@keyframes scintille {
+  0%, 100% { opacity: 0.35; transform: scale(0.92); }
+  50% { opacity: 0.95; transform: scale(1.06); }
+}
+@keyframes flotte {
+  0%, 100% { transform: translateY(-6px); }
+  50% { transform: translateY(6px); }
+}
+@keyframes poulsOr {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(232, 198, 106, 0.45); }
+  50% { box-shadow: 0 0 0 14px rgba(232, 198, 106, 0); }
+}
+@keyframes defile {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+
+/* --------------------------------------------------------------------------
+   Base
+   -------------------------------------------------------------------------- */
+html {
+  -webkit-tap-highlight-color: transparent;
+  color-scheme: dark;
+}
+
+body {
+  background-color: var(--color-nuit);
+  color: var(--color-creme);
+  font-family: var(--font-texte);
+  font-feature-settings: "ss01", "cv11";
+  min-height: 100dvh;
+  overscroll-behavior-y: none;
+}
+
+/* Fond « velours » : dégradés radiaux + grain léger */
+.fond-velours {
+  position: relative;
+  background-image:
+    radial-gradient(1200px 700px at 50% -10%, rgba(232, 198, 106, 0.16), transparent 62%),
+    radial-gradient(900px 600px at 110% 10%, rgba(124, 29, 46, 0.24), transparent 60%),
+    radial-gradient(800px 700px at -10% 100%, rgba(31, 111, 92, 0.16), transparent 62%),
+    linear-gradient(180deg, #0a0908 0%, #0e0c0b 45%, #080706 100%);
+}
+
+.fond-velours::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.055;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)' opacity='0.7'/%3E%3C/svg%3E");
+}
+
+/* Texte doré */
+.texte-or {
+  background-image: linear-gradient(100deg, #fff3c4 0%, #e8c66a 32%, #b98f33 62%, #f8e7a8 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.texte-or-anime {
+  background-image: linear-gradient(100deg, #fff3c4, #e8c66a 30%, #b98f33 55%, #f8e7a8 80%, #fff3c4);
+  background-size: 220% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: brillance 6s linear infinite;
+}
+
+@keyframes brillance {
+  from { background-position: 0% 50%; }
+  to { background-position: 200% 50%; }
+}
+
+/* Carte « verre » avec liseré doré */
+.carte-luxe {
+  position: relative;
+  border-radius: var(--radius-carte);
+  background:
+    linear-gradient(160deg, rgba(38, 32, 27, 0.92), rgba(16, 14, 13, 0.94));
+  border: 1px solid rgba(232, 198, 106, 0.22);
+  box-shadow: var(--shadow-carte), inset 0 1px 0 rgba(255, 243, 196, 0.08);
+  backdrop-filter: blur(14px);
+}
+
+.carte-luxe::before {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(150deg, rgba(255, 243, 196, 0.55), rgba(232, 198, 106, 0.05) 42%, rgba(124, 29, 46, 0.35));
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+}
+
+/* Bouton principal doré */
+.btn-or {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6rem;
+  border-radius: 999px;
+  padding: 0.95rem 1.6rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: #221a06;
+  background-image: linear-gradient(180deg, #fff0bc 0%, #f0d489 30%, #d9b052 60%, #b98f33 100%);
+  box-shadow:
+    0 10px 30px -10px rgba(232, 198, 106, 0.7),
+    inset 0 1px 0 rgba(255, 255, 255, 0.6),
+    inset 0 -2px 0 rgba(120, 88, 20, 0.35);
+  transition: transform 0.16s ease, filter 0.16s ease;
+  overflow: hidden;
+}
+.btn-or:active { transform: scale(0.975); filter: brightness(0.96); }
+.btn-or:disabled { opacity: 0.55; filter: grayscale(0.25); }
+.btn-or::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(110deg, transparent 20%, rgba(255, 255, 255, 0.55) 45%, transparent 65%);
+  transform: translateX(-120%);
+  animation: balayage 5.5s ease-in-out infinite;
+}
+@keyframes balayage {
+  0%, 62% { transform: translateX(-120%); }
+  78%, 100% { transform: translateX(120%); }
+}
+
+/* Bouton secondaire */
+.btn-fantome {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border-radius: 999px;
+  padding: 0.75rem 1.25rem;
+  font-weight: 600;
+  color: var(--color-creme);
+  border: 1px solid rgba(232, 198, 106, 0.32);
+  background: rgba(255, 243, 196, 0.04);
+  transition: background 0.18s ease, border-color 0.18s ease;
+}
+.btn-fantome:hover { background: rgba(255, 243, 196, 0.09); border-color: rgba(232, 198, 106, 0.55); }
+
+/* Champs de formulaire */
+.champ {
+  width: 100%;
+  border-radius: 0.9rem;
+  border: 1px solid rgba(232, 198, 106, 0.22);
+  background: rgba(10, 9, 8, 0.72);
+  padding: 0.9rem 1rem;
+  color: var(--color-creme);
+  font-size: 1rem;
+  transition: border-color 0.18s ease, box-shadow 0.18s ease;
+}
+.champ::placeholder { color: rgba(185, 176, 162, 0.55); }
+.champ:focus {
+  outline: none;
+  border-color: rgba(232, 198, 106, 0.75);
+  box-shadow: 0 0 0 4px rgba(232, 198, 106, 0.14);
+}
+
+.etiquette {
+  display: block;
+  margin-bottom: 0.45rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: rgba(232, 198, 106, 0.85);
+}
+
+/* Filet décoratif */
+.filet-or {
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(232, 198, 106, 0.6), transparent);
+}
+
+/* Grain de sécurité : masque les débordements de la roue */
+.roue-masque {
+  filter: drop-shadow(0 30px 60px rgba(0, 0, 0, 0.75));
+}
+
+/* Respect des préférences d'accessibilité */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Scrollbar discrète (desktop) */
+@media (min-width: 1024px) {
+  ::-webkit-scrollbar { width: 10px; height: 10px; }
+  ::-webkit-scrollbar-track { background: #0a0908; }
+  ::-webkit-scrollbar-thumb {
+    background: linear-gradient(180deg, #6b5320, #a9822b);
+    border-radius: 999px;
+    border: 2px solid #0a0908;
+  }
+}
+
+/* Tableaux admin */
+.tableau-admin th {
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(232, 198, 106, 0.8);
+  font-weight: 600;
+  padding: 0.75rem 0.9rem;
+  text-align: left;
+  white-space: nowrap;
+}
+.tableau-admin td {
+  padding: 0.8rem 0.9rem;
+  border-top: 1px solid rgba(232, 198, 106, 0.1);
+  font-size: 0.9rem;
+  vertical-align: middle;
+}
+.tableau-admin tbody tr:hover { background: rgba(232, 198, 106, 0.045); }

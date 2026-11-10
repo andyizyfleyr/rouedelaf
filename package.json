@@ -1,0 +1,57 @@
+{
+  "name": "roue-de-la-fortune",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Roue de la Fortune — jeu marketing en boutique (Next.js 16, Neon, Upstash Redis)",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint",
+    "typecheck": "tsc --noEmit",
+    "db:setup": "node scripts/db-setup.mjs",
+    "db:seed": "node scripts/db-setup.mjs --seed",
+    "demo": "node scripts/demo.mjs",
+    "test": "node --experimental-strip-types --test tests/*.test.ts",
+    "apercu": "node --experimental-strip-types rendu-roue.mjs"
+  },
+  "dependencies": {
+    "@fontsource-variable/manrope": "5.3.0",
+    "@fontsource/cinzel": "5.3.0",
+    "@neondatabase/serverless": "1.2.0",
+    "@upstash/ratelimit": "2.2.0",
+    "@upstash/redis": "1.41.0",
+    "@zxing/browser": "0.2.1",
+    "canvas-confetti": "1.9.4",
+    "framer-motion": "14.12.0",
+    "howler": "2.2.4",
+    "jose": "6.2.17",
+    "lucide-react": "1.71.0",
+    "next": "16.4.6",
+    "qrcode": "1.5.4",
+    "react": "19.3.1",
+    "react-dom": "19.3.1",
+    "recharts": "3.10.1",
+    "zod": "4.6.7"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "0.5.16",
+    "@electric-sql/pglite-socket": "0.2.19",
+    "@tailwindcss/turbopack": "4.3.5",
+    "@types/canvas-confetti": "1.9.0",
+    "@types/howler": "2.2.13",
+    "@types/node": "^20",
+    "@types/pg": "8.23.1",
+    "@types/qrcode": "1.5.6",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "eslint": "^9",
+    "eslint-config-next": "16.4.6",
+    "pg": "8.23.1",
+    "tailwindcss": "4.3.5",
+    "typescript": "^5"
+  },
+  "engines": {
+    "node": ">=20.9.0"
+  }
+}

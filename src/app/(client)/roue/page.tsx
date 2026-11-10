@@ -3,7 +3,6 @@ import { redirect } from "next/navigation";
 
 import { EcranRoue } from "@/components/client/EcranRoue";
 import { construireCases } from "@/lib/roue";
-import { sql } from "@/lib/db";
 import { lireSessionJeu } from "@/lib/session";
 import { chargerCadeauxRoue, toursRestants } from "@/server/tirage";
 import { listeTiragesParticipant } from "@/server/data";
@@ -50,18 +49,7 @@ async function Contenu() {
 
   const restants = await toursRestants(session.participantId);
 
-  /**
-   * Tours gagnés en parrainant et pas encore utilisés : c'est ce qui explique
-   * au joueur pourquoi il peut rejouer alors qu'il a déjà un cadeau.
-   */
   const parametres = await lireParametres();
-  const [participant] = await sql`
-    SELECT tours_bonus FROM participants WHERE id = ${session.participantId}
-  `;
-  // Les tours de base sont consommés en premier : un bonus « encore disponible »
-  // est donc simplement un tour restant que les tours de base ne couvrent pas.
-  const bonusTotal = Number(participant?.tours_bonus ?? 0);
-  const bonusRestant = Math.max(Math.min(bonusTotal, restants - Math.min(restants, parametres.toursMax)), 0);
 
   // Tous les tirages du joueur (pas seulement le dernier) : dès qu'un second
   // cadeau est gagné (parrainage, tours offerts), le premier doit rester
@@ -98,18 +86,13 @@ async function Contenu() {
   );
 
   return (
+    /* L'écran n'affiche QUE la roue : ni nom, ni compteur de tours, ni adresse
+       de boutique, ni bouton. Le lancement passe par le moyeu « ROUE ». */
     <EcranRoue
       cases={cases}
-      nom={session.nom}
       toursRestants={restants}
-      toursBonus={bonusRestant}
       jeuOuvert={parametres.activeJeu}
       lotsDisponibles={cadeaux.some((c) => Number(c.stock) > 0 && Number(c.probabilite) > 0)}
-      messageFermeture={
-        parametres.activeJeu
-          ? "Tous les cadeaux ont été gagnés ! La boutique recharge la roue, revenez très bientôt."
-          : "Le jeu est momentanément en pause. Revenez un peu plus tard, votre tour vous attend."
-      }
       tiragesInitiaux={tiragesInitiaux}
       qrInitial={qrInitial}
       messagePerdu={messagePerdu}

@@ -68,6 +68,18 @@ export type RoueProps = {
    * ne comprenait pas que son tour était déjà consommé.
    */
   angleInitial?: number | null;
+  /**
+   * Le moyeu « ROUE » est LE bouton de lancement : c'est le seul élément
+   * cliquable de l'écran. `onLancer` est appelé quand le joueur appuie dessus
+   * (ou sur Entrée / Espace, le moyeu étant un vrai bouton).
+   */
+  onLancer?: () => void;
+  /** Le moyeu doit-il clignoter (il y a un tour à jouer) ? */
+  clignote?: boolean;
+  /** Le moyeu est-il actionnable ? (sinon il reste décoratif) */
+  cliquable?: boolean;
+  /** Jeu indisponible : le moyeu l'annonce lui-même, sans autre texte. */
+  indisponible?: boolean;
   className?: string;
 };
 
@@ -96,6 +108,10 @@ export function Roue({
   taille,
   pleinEcran = false,
   angleInitial = null,
+  onLancer,
+  clignote = false,
+  cliquable = false,
+  indisponible = false,
   className,
 }: RoueProps) {
   /**
@@ -105,13 +121,6 @@ export function Roue({
    */
   const rotation = useMotionValue(angleInitial ?? 0);
   const [enMouvement, setEnMouvement] = useState(false);
-  /** Index actuellement sous le doigt (retour visuel pendant la rotation). */
-  const [indexDoigt, setIndexDoigt] = useState<number | null>(() => {
-    if (angleInitial === null || cases.length === 0) return null;
-    const secteur = 360 / cases.length;
-    const normalise = ((-(angleInitial % 360)) + 360) % 360;
-    return Math.floor(normalise / secteur) % cases.length;
-  });
   /** Incrémenté à chaque cloison franchie : fait claquer l'aiguille. */
   const [claquer, setClaquer] = useState(0);
   /**
@@ -150,16 +159,12 @@ export function Roue({
     });
   }, [cases]);
 
-  /** Suit la rotation : quel secteur est sous le doigt ? */
+  /** Mémorise l'angle courant (utile aux claquements de l'aiguille). */
   useEffect(() => {
     return rotation.on("change", (valeur) => {
       rotationRef.current = valeur;
-      if (!cases.length) return;
-      const secteur = 360 / cases.length;
-      const normalise = ((-valeur % 360) + 360) % 360;
-      setIndexDoigt(Math.floor(normalise / secteur) % cases.length);
     });
-  }, [rotation, cases.length]);
+  }, [rotation]);
 
   useEffect(() => () => animationRef.current?.stop(), []);
 
@@ -203,7 +208,6 @@ export function Roue({
       },
       onComplete: () => {
         setEnMouvement(false);
-        setIndexDoigt(caseCible);
         onFin?.();
       },
     });
@@ -216,8 +220,6 @@ export function Roue({
     const id = setTimeout(lancer, 0);
     return () => clearTimeout(id);
   }, [caseCible, lancer]);
-
-  const secteurCourant = indexDoigt !== null ? (secteurs[indexDoigt]?.nom ?? null) : null;
 
   return (
     <div
@@ -434,38 +436,74 @@ export function Roue({
           </motion.g>
         </g>
 
-        {/* ── Moyeu ────────────────────────────────────────────────────── */}
-        <circle cx={CENTRE} cy={CENTRE} r={30} fill="url(#jante)" />
-        <circle cx={CENTRE} cy={CENTRE} r={26} fill="url(#moyeu)" />
-        <circle cx={CENTRE} cy={CENTRE} r={26} fill="none" stroke="rgba(93,68,16,0.6)" strokeWidth="1" />
-        <text
-          x={CENTRE}
-          y={CENTRE + 1}
-          textAnchor="middle"
-          dominantBaseline="middle"
-          fontSize={9.5}
-          fontWeight={800}
-          letterSpacing="0.5"
-          fill="#5d4410"
-          style={{ fontFamily: "Cinzel, serif", pointerEvents: "none" }}
-        >
-          {enMouvement ? "…" : "ROUE"}
-        </text>
+        {/*
+          ── Moyeu ────────────────────────────────────────────────────────
+          C'est LE bouton de l'écran : le joueur appuie sur la boule « ROUE »
+          pour lancer la roue. Le groupe est donc un vrai bouton (rôle, libellé,
+          focus clavier) et non un décor cliquable : les lecteurs d'écran
+          l'annoncent, et Entrée / Espace fonctionnent.
 
-        {/* Reflet du verre sur le moyeu */}
-        <ellipse cx={CENTRE - 8} cy={CENTRE - 9} rx={9} ry={5} fill="rgba(255,255,255,0.5)" />
+          Le clignotement vient d'une animation CSS sur des rayons qui partent
+          du moyeu : aucun état React, donc il tourne à 60 images/s sans faire
+          re-rendre la roue.
+        */}
+        {/* Halo pulsé, hors du bouton : l'animation ne doit pas faire bouger le
+            cadre de la cible tactile (un bouton qui « tremble » est plus
+            difficile à viser, et les outils d'accessibilité le croient
+            instable). */}
+        {clignote && (
+          <circle
+            cx={CENTRE}
+            cy={CENTRE}
+            r={41}
+            fill="none"
+            stroke="rgba(255,231,150,0.9)"
+            strokeWidth="3.2"
+            className="moyeu-halo"
+            aria-hidden
+          />
+        )}
+
+        <g
+          role={cliquable ? "button" : undefined}
+          tabIndex={cliquable ? 0 : undefined}
+          aria-label={cliquable ? "Tourner la roue" : undefined}
+          onClick={() => {
+            if (cliquable && !enMouvement) onLancer?.();
+          }}
+          onKeyDown={(e) => {
+            if (!cliquable || enMouvement) return;
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              onLancer?.();
+            }
+          }}
+          style={{ cursor: cliquable && !enMouvement ? "pointer" : "default" }}
+          className={cliquable ? "moyeu-bouton" : undefined}
+        >
+          <circle cx={CENTRE} cy={CENTRE} r={40} fill="url(#jante)" />
+          <circle cx={CENTRE} cy={CENTRE} r={34} fill="url(#moyeu)" />
+          <circle cx={CENTRE} cy={CENTRE} r={34} fill="none" stroke="rgba(93,68,16,0.6)" strokeWidth="1" />
+
+          {/* Reflet du verre sur le moyeu */}
+          <ellipse cx={CENTRE - 10} cy={CENTRE - 12} rx={11} ry={6} fill="rgba(255,255,255,0.5)" />
+
+          <text
+            x={CENTRE}
+            y={CENTRE + 1.5}
+            textAnchor="middle"
+            dominantBaseline="middle"
+            fontSize={enMouvement ? 11 : indisponible ? 8.4 : 13}
+            fontWeight={800}
+            letterSpacing="0.4"
+            fill="#4a3406"
+            style={{ fontFamily: "Cinzel, serif", pointerEvents: "none" }}
+          >
+            {enMouvement ? "…" : indisponible ? "RECHARGE" : "ROUE"}
+          </text>
+        </g>
       </svg>
 
-      {/*
-        Étiquette : ce que le doigt survole / désigne. Elle est posée À
-        L'INTÉRIEUR du carré (bottom-0) : collée en dessous (-bottom-5), elle
-        allongeait la page de ~28 px et créait un défilement parasite.
-      */}
-      <div className="pointer-events-none absolute inset-x-0 bottom-0 flex justify-center">
-        <span className="max-w-[86%] truncate rounded-full border border-or/35 bg-sapin/90 px-3.5 py-1 text-[10.5px] font-bold tracking-[0.14em] text-or-clair uppercase shadow-lg backdrop-blur">
-          {enMouvement ? "La roue tourne…" : (secteurCourant ?? "Joyeux Noël")}
-        </span>
-      </div>
     </div>
   );
 }

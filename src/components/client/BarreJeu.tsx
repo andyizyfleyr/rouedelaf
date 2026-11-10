@@ -97,7 +97,7 @@ export function CadreJeu({
 
   return (
     <div
-      className={`relative mx-auto flex h-dvh w-full flex-col pb-2 ${
+      className={`relative mx-auto flex h-dvh w-full flex-col ${large ? "" : "pb-2"} ${
         // PLEINE LARGEUR ET SANS DÉFILEMENT sur /roue : le halo lumineux de la
         // roue dépasse volontairement de son carré (12 %) et, sans cela,
         // allongeait la page d'une soixantaine de pixels sur grand écran.
@@ -108,7 +108,19 @@ export function CadreJeu({
       }`}
     >
       <BarreJeu nom={nom} />
-      <main className="flex min-h-0 flex-1 flex-col justify-center">
+      {/*
+        /roue : le `main` ne doit RIEN imposer. Il portait `flex-col` +
+        `justify-center`, ce qui laissait la roue collée en haut sur téléphone.
+        On lui demande seulement d'occuper l'espace restant ; c'est l'écran de
+        la roue qui se centre lui-même (absolute inset-0).
+      */}
+      <main
+        className={
+          large
+            ? "relative flex min-h-0 flex-1"
+            : "flex min-h-0 flex-1 flex-col justify-center"
+        }
+      >
         {children}
       </main>
       <PiedJeu texte={pied} />

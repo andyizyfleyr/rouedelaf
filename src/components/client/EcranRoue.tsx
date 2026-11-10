@@ -1,18 +1,9 @@
 "use client";
 
 import { motion } from "framer-motion";
-import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
-import {
-  ChevronLeft,
-  ChevronRight,
-  Gift,
-  Loader2,
-  MapPin,
-  TriangleAlert,
-} from "lucide-react";
+import { TriangleAlert } from "lucide-react";
 
-import { Flocon, Sapin } from "@/components/client/Ornements";
 import { PopupResultat } from "@/components/client/PopupResultat";
 import { Roue } from "@/components/roue/Roue";
 import { entetesJeu } from "@/lib/appareil";
@@ -48,22 +39,16 @@ import type { CadeauRoue, ResultatTirageApi, TirageResultat } from "@/lib/types"
  */
 export function EcranRoue({
   cases,
-  nom,
   toursRestants,
-  toursBonus = 0,
   tiragesInitiaux,
   qrInitial,
   messagePerdu,
   jeuOuvert,
   lotsDisponibles,
-  messageFermeture,
   boutique,
 }: {
   cases: CadeauRoue[];
-  nom: string;
   toursRestants: number;
-  /** Tours gagnés en parrainant, encore non consommés. */
-  toursBonus?: number;
   /** Tous les tirages déjà joués (du plus récent au plus ancien). */
   tiragesInitiaux: TirageResultat[];
   /** QR du dernier tirage gagné, préparé côté serveur. */
@@ -73,8 +58,6 @@ export function EcranRoue({
   jeuOuvert: boolean;
   /** Reste-t-il au moins un lot en stock ? */
   lotsDisponibles: boolean;
-  /** Raison affichée quand on ne peut pas jouer (jeu fermé ou stock épuisé). */
-  messageFermeture: string;
   boutique: { nom: string; adresse: string; whatsapp: string };
 }) {
   const [chargement, setChargement] = useState(false);
@@ -223,21 +206,7 @@ export function EcranRoue({
    * que la roue ne contenait plus que des cases « Perdu ».
    */
   const jeuIndisponible = !jeuOuvert || !lotsDisponibles;
-  /** Un nom de plus de 18 caractères ne tient pas sur une ligne de titre. */
-  const nomLong = nom.trim().length > 18;
   const peutTourner = toursRestants > 0 && !resultat && !jeuIndisponible;
-  const titreBouton = chargement
-    ? "Préparation…"
-    : enVol
-      ? "La roue tourne…"
-      : resultat
-        ? "Voir mon cadeau"
-        : peutTourner
-          ? "Tourner la roue"
-          : jeuIndisponible
-            ? "Roue en recharge"
-            : "Revoir mon cadeau";
-
   function actionBouton() {
     if (resultat && (arretee || !enVol)) {
       setPopup(true);
@@ -251,188 +220,61 @@ export function EcranRoue({
   }
 
   return (
-    <div className="grid min-h-0 w-full flex-1 grid-cols-1 content-center justify-items-center gap-3 px-0 sm:grid-cols-[minmax(0,1fr)_auto] sm:grid-rows-[auto_1fr] sm:content-center sm:items-center sm:justify-items-start sm:gap-x-14 sm:gap-y-4 sm:px-12 sm:py-6">
-      {/* ————— TEXTES ————— */}
-      <div className="flex w-full min-w-0 flex-col items-center gap-2 px-4 pt-2 text-center sm:col-start-1 sm:row-start-1 sm:max-w-[30rem] sm:items-start sm:gap-3 sm:px-0 sm:pt-0 sm:text-left">
-        <span
-          className={`inline-flex max-w-full items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-[9px] leading-tight font-semibold tracking-[0.16em] uppercase sm:px-3 sm:py-1 sm:text-[10.5px] ${
-            jeuIndisponible && !resultat
-              ? "border-cendre/25 bg-white/[0.04] text-cendre/70"
-              : "border-or/35 bg-sapin-2/70 text-or-clair/90"
-          }`}
-        >
-          <Sapin className="size-3 shrink-0 sm:size-3.5" />
-          {/* Pas de « cadeau garanti » quand il n'y a plus de cadeau. */}
-          <span>
-            {jeuIndisponible && !resultat
-              ? "Roue en recharge"
-              : toursBonus > 0 && toursRestants > 0
-                ? // Tour gagné en parrainant : on le dit explicitement, sinon le
-                  // parrain ne comprend pas pourquoi le bouton lui propose de
-                  // rejouer alors qu'il croyait avoir fini.
-                  // On compte UNIQUEMENT les tours de parrainage : le tour de
-                  // base ne se « gagne » pas, l'annoncer était trompeur
-                  // (« +3 tours » pour 2 bonus + 1 tour offert).
-                  `+${toursBonus} tour${toursBonus > 1 ? "s" : ""} gagné${toursBonus > 1 ? "s" : ""} · merci !`
-                : `${toursRestants > 1 ? `${toursRestants} tours` : "1 tour offert"} · cadeau garanti`}
-          </span>
-        </span>
+    /*
+      ÉCRAN 100 % ROUE.
 
-        {/*
-          Nom long : « Aboubakar Siddiq Ouedraogo de Souza » prenait trois
-          lignes sur un téléphone et poussait la roue hors de l'écran. On
-          réduit la taille au-delà de ~18 caractères et on limite à deux
-          lignes, avec une ellipse propre (le nom complet reste dans le
-          `title`, et sur /resultat qui l'affiche en entier).
-        */}
-        <h1
-          title={nom}
-          className={`texte-or font-titre line-clamp-2 leading-[1.06] font-bold tracking-[0.02em] uppercase sm:line-clamp-3 ${
-            nomLong ? "text-[15px] sm:text-[clamp(20px,1.9vw,28px)]" : "text-[19px] sm:text-[clamp(22px,2.2vw,32px)]"
-          }`}
-        >
-          {nom},
-          <br />
-          <span className="text-[15px] tracking-[0.06em] sm:text-[clamp(17px,1.6vw,24px)]">
-            {peutTourner || resultat ? "à vous de jouer" : "voici votre cadeau"}
-          </span>
-        </h1>
+      Tout ce qui n'était pas la roue a été retiré (badge « N tours · cadeau
+      garanti », nom du joueur, phrase d'accueil, adresse de la boutique,
+      bouton « Tourner la roue », sélecteur « Cadeau 2 / 7 », lien « Voir tous
+      mes cadeaux »). Le joueur lance la partie en appuyant sur la boule
+      « ROUE », au centre — la seule chose actionnable de l'écran.
 
-        <p className="max-w-[34ch] text-[10.5px] leading-snug text-cendre/70 sm:text-[13px]">
-          {peutTourner
-            ? "Tournez la roue de Noël et découvrez votre cadeau. Un seul tour par personne."
-            : jeuIndisponible && !resultat
-              ? messageFermeture
-              : "Votre tour est terminé. Retrouvez votre cadeau ci-dessous."}
-        </p>
-
-        {erreur && (
-          <motion.p
-            ref={refErreur}
-            initial={{ opacity: 0, y: 6 }}
-            animate={{ opacity: 1, y: 0 }}
-            role="alert"
-            className="flex w-full max-w-[38ch] items-start gap-2 rounded-lg border border-rose-300/50 bg-rose-950/70 px-3 py-2.5 text-[13px] leading-snug font-semibold text-rose-50 shadow-[0_6px_24px_-8px_rgba(0,0,0,0.7)] sm:text-[14px]"
-          >
-            <TriangleAlert className="mt-px size-5 shrink-0" aria-hidden />
-            <span>{erreur}</span>
-          </motion.p>
-        )}
-
-        {/* Rappel boutique : seulement quand la colonne a la place. */}
-        <div className="mt-1 hidden w-full flex-col gap-2 border-t border-or/15 pt-3 text-[11.5px] leading-snug text-cendre/60 lg:flex">
-          <span className="flex items-start gap-2">
-            <MapPin className="mt-px size-3.5 shrink-0 text-or/70" />
-            <span>
-              {boutique.nom}
-              <br />
-              <span className="text-cendre/45">{boutique.adresse}</span>
-            </span>
-          </span>
-          <span className="flex items-center gap-2">
-            <Flocon className="size-3.5 shrink-0" />
-            Présentez le code en boutique
-          </span>
-        </div>
+      La roue est centrée dans les deux axes, et dimensionnée sur la PLUS
+      PETITE des deux contraintes (largeur / hauteur) : elle est donc toujours
+      entièrement visible, jamais coupée, et la plus grande possible.
+    */
+    /*
+      `absolute inset-0` : la roue se centre sur la TOTALITÉ de l'écran, pas
+      sur la hauteur restante du conteneur. Sans cela, un `main` en colonne
+      (voir CadreJeu) la laissait collée en haut sur téléphone.
+    */
+    <div className="absolute inset-0 flex items-center justify-center">
+      <div className="h-[min(100vw,calc(100dvh-0.5rem))] w-[min(100vw,calc(100dvh-0.5rem))] max-h-full max-w-full">
+        <Roue
+          key={relance}
+          cases={cases}
+          caseCible={cible}
+          onFin={surFin}
+          tours={6}
+          duree={6.6}
+          taille={420}
+          pleinEcran
+          angleInitial={angleConnu}
+          onLancer={actionBouton}
+          cliquable={peutTourner || (resultat !== null && (arretee || !enVol))}
+          clignote={peutTourner || (resultat !== null && (arretee || !enVol))}
+          indisponible={jeuIndisponible && !resultat}
+        />
       </div>
 
-      {/* ————— LA ROUE ————— */}
-      <div className="order-2 flex min-h-0 min-w-0 items-center justify-center sm:order-none sm:col-start-2 sm:row-span-2 sm:row-start-1">
-        {/*
-          La roue prend le plus grand carré possible : toute la hauteur de
-          l'écran (`100dvh` moins le cadre), plafonnée par la place laissée aux
-          textes (62 % de la largeur) sur les écrans très larges, où 56vw
-          laissait de grandes marges noires.
-        */}
-        <div className="h-[min(calc(100dvh-11rem),100vw)] w-[min(calc(100dvh-11rem),100vw)] sm:h-[min(calc(100dvh-3rem),62vw,900px)] sm:w-[min(calc(100dvh-3rem),62vw,900px)]">
-          <Roue
-            key={relance}
-            cases={cases}
-            caseCible={cible}
-            onFin={surFin}
-            tours={6}
-            duree={6.6}
-            taille={420}
-            pleinEcran
-            angleInitial={angleConnu}
-          />
-        </div>
-      </div>
-
-      {/* ————— LE BOUTON + navigation entre les cadeaux ————— */}
-      <div className="order-3 w-full shrink-0 px-4 sm:order-none sm:col-start-1 sm:row-start-2 sm:self-start sm:px-0">
-        <button
-          type="button"
-          onClick={actionBouton}
-          disabled={chargement || enVol || (jeuIndisponible && !resultat && mesTirages.length === 0)}
-          className="btn-or w-full !px-2.5 !py-3 text-[14px] sm:!py-3.5 sm:text-[15px]"
+      {/*
+        Messages d'erreur : les seuls textes conservés, parce qu'ils disent
+        pourquoi le moyeu ne répond pas (réseau coupé, tour déjà consommé,
+        plus de stock). Ils flottent AU-DESSUS de la roue, sans la décaler,
+        et disparaissent d'eux-mêmes à la tentative suivante.
+      */}
+      {erreur && (
+        <motion.p
+          ref={refErreur}
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          role="alert"
+          className="pointer-events-none absolute inset-x-3 bottom-4 z-20 mx-auto flex max-w-[38ch] items-start gap-2 rounded-xl border border-rose-300/50 bg-rose-950/90 px-3 py-2.5 text-[13px] leading-snug font-semibold text-rose-50 shadow-[0_10px_30px_-10px_rgba(0,0,0,0.85)]"
         >
-          {chargement || enVol ? (
-            <>
-              <Loader2 className="size-4 shrink-0 animate-spin" />
-              <span className="min-w-0 leading-tight">{titreBouton}</span>
-            </>
-          ) : (
-            <>
-              <Gift className="size-4 shrink-0" />
-              {/* Pas de `truncate` : sur 320 px le libellé se coupait
-                  (« Tourner la … »). On autorise deux lignes. */}
-              <span className="min-w-0 leading-tight">{titreBouton}</span>
-            </>
-          )}
-        </button>
-
-        {/*
-          Plusieurs cadeaux : le joueur doit pouvoir revenir au premier. Sans
-          ces flèches, gagner un deuxième lot rendait le premier inaccessible
-          (son code restait valide mais n'était plus affichable nulle part).
-        */}
-        {liste.length > 1 && (
-          <div className="mt-2 flex items-center justify-between gap-2 rounded-lg border border-or/20 bg-black/25 px-1.5 py-1">
-            <button
-              type="button"
-              aria-label="Cadeau précédent"
-              onClick={() => {
-                setChoix((c) => (c + 1) % liste.length);
-                setRelance((n) => n + 1);
-              }}
-              className="grid size-8 place-items-center rounded-md text-cendre/70 hover:bg-white/5 hover:text-creme"
-            >
-              <ChevronLeft className="size-4" />
-            </button>
-            <button
-              type="button"
-              onClick={() => setPopup(true)}
-              className="min-w-0 flex-1 text-center text-[10.5px] leading-tight tracking-[0.08em] text-or-clair/85 uppercase"
-            >
-              Cadeau {choix + 1} / {liste.length}
-              <span className="block truncate text-[10px] tracking-normal text-cendre/55 normal-case">
-                {tirageAffiche?.cadeau_nom ?? "Bon de réduction"}
-              </span>
-            </button>
-            <button
-              type="button"
-              aria-label="Cadeau suivant"
-              onClick={() => {
-                setChoix((c) => (c + 1) % liste.length);
-                setRelance((n) => n + 1);
-              }}
-              className="grid size-8 place-items-center rounded-md text-cendre/70 hover:bg-white/5 hover:text-creme"
-            >
-              <ChevronRight className="size-4" />
-            </button>
-          </div>
-        )}
-
-        {!peutTourner && !resultat && (
-          <Link
-            href="/resultat"
-            className="btn-fantome mt-2 w-full !py-2 text-[12px]"
-          >
-            Voir tous mes cadeaux
-          </Link>
-        )}
-      </div>
+          <TriangleAlert className="mt-px size-5 shrink-0" aria-hidden />
+          <span>{erreur}</span>
+        </motion.p>
+      )}
 
       {/* Résultat en popup — jamais de redirection automatique */}
       {peutVoirResultat && (

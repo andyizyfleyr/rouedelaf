@@ -329,6 +329,35 @@ body {
   50% { transform: translateY(2px); }
 }
 
+/* --------------------------------------------------------------------------
+   Moyeu « ROUE » : c'est LE bouton de lancement.
+   Un anneau lumineux part du moyeu et s'élargit en s'effaçant : on comprend
+   sans lire qu'il faut appuyer là. Aucun état React, donc aucun re-rendu de la
+   roue pendant l'animation.
+   -------------------------------------------------------------------------- */
+.moyeu-halo {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: moyeuHalo 1.9s ease-out infinite;
+  pointer-events: none;
+}
+@keyframes moyeuHalo {
+  0% { transform: scale(0.86); opacity: 0.95; }
+  70% { transform: scale(1.22); opacity: 0; }
+  100% { transform: scale(1.22); opacity: 0; }
+}
+
+/* Liseré qui respire sur la boule elle-même (2e indice, plus discret). */
+.moyeu-bouton:focus-visible { outline: none; }
+.moyeu-bouton:focus-visible circle:first-of-type {
+  stroke: #fff3c4;
+  stroke-width: 3.5;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .moyeu-halo { animation: none; opacity: 0.7; }
+}
+
 /* Respect des préférences d'accessibilité */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {

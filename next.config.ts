@@ -25,6 +25,9 @@ const nextConfig: NextConfig = {
   // modules et `fs` ne trouverait pas sql/schema.sql dans la fonction.
   outputFileTracingIncludes: {
     "/api/admin/init": ["./sql/**/*.sql"],
+    // Les migrations sont lues au premier accès à la base, par n'importe
+    // quelle route : elles doivent être présentes dans toutes les fonctions.
+    "/**": ["./sql/**/*.sql"],
   },
 
   // Les paquets serveur qui ne doivent jamais finir dans le bundle navigateur.

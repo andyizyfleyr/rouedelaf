@@ -21,7 +21,6 @@ import {
 import { IconeCadeau } from "@/components/roue/IconeCadeau";
 import { BoutonOr, Carte, Pastille, TitreOr } from "@/components/ui/Base";
 import { formatDateHeure, tempsRestant } from "@/lib/format";
-import { lancerConfettis } from "@/lib/confettis";
 import { suivreEvenement } from "@/lib/pixel";
 import { jouerPerte, jouerVictoire } from "@/lib/sons";
 import type { TirageResultat } from "@/lib/types";
@@ -35,11 +34,14 @@ export function EcranResultat({
   qrDataUrl,
   messagePerdu,
   boutique,
+  rang,
 }: {
   tirage: TirageResultat;
   qrDataUrl: string | null;
   messagePerdu: string;
   boutique: { nom: string; adresse: string; whatsapp: string };
+  /** « 2 / 3 » quand le joueur a plusieurs cadeaux, pour ne pas les confondre. */
+  rang?: { position: number; total: number };
 }) {
   const gagne = tirage.statut === "gagne";
   const [copie, setCopie] = useState(false);
@@ -63,7 +65,13 @@ export function EcranResultat({
 
   useEffect(() => {
     if (gagne) {
-      lancerConfettis({ intense: true });
+      /*
+       * PAS de confettis ici. /resultat est un « reçu » : le joueur y revient
+       * exprès pour montrer son code en boutique, parfois plusieurs fois. Les
+       * confettis couvraient le code et le QR (le canvas est au-dessus des
+       * cartes), et avec plusieurs cadeaux empilés la page devenait
+       * illisible. L'effet « jackpot » reste sur la popup, au moment du gain.
+       */
       jouerVictoire();
       suivreEvenement("joue_victoire", {
         cadeau: tirage.cadeau_nom,
@@ -111,6 +119,11 @@ export function EcranResultat({
         <div className="min-w-0">
           <TitreOr as="h1" className="text-[1.45rem] leading-tight sm:text-[1.7rem]">
             {gagne ? "Vous avez gagné !" : "Pas de chance"}
+            {rang && rang.total > 1 && (
+              <span className="ml-2 align-middle text-[11px] font-semibold tracking-[0.14em] text-or/80 uppercase">
+                {rang.position} / {rang.total}
+              </span>
+            )}
           </TitreOr>
           <p className="mt-0.5 line-clamp-2 text-[11.5px] leading-snug text-cendre/85">
             {gagne ? "Montrez ce code en boutique." : messagePerdu}

@@ -5,7 +5,9 @@ import { Gift, MapPin, Sparkles, Ticket } from "lucide-react";
 import { FormulaireJeu } from "@/components/client/FormulaireJeu";
 import { boutique } from "@/lib/env";
 import { lireSessionJeu } from "@/lib/session";
-import { sql } from "@/lib/db";
+import { listeTiragesParticipant } from "@/server/data";
+import { tempsRestant } from "@/lib/format";
+import type { TirageResultat } from "@/lib/types";
 
 export const metadata = {
   title: "Tentez votre chance",
@@ -34,13 +36,18 @@ async function Contenu() {
   // navigation (une redirection surprise donnait l'impression que le site se
   // fermait tout seul). S'il a déjà joué, il voit simplement un lien.
   let dejaJoue = false;
+  /**
+   * V8 — le joueur déjà inscrit voyait « Vous avez déjà participé » sans
+   * savoir ce qu'il avait gagné : il devait changer de page pour le savoir.
+   * On affiche donc le cadeau tout de suite (nom, état, date limite).
+   */
+  let gains: TirageResultat[] = [];
   if (session) {
-    const [dernier] = await sql`
-      SELECT id FROM tirages WHERE participant_id = ${session.participantId}
-      ORDER BY created_at DESC, id DESC LIMIT 1
-    `;
-    dejaJoue = Boolean(dernier);
+    const tirages = await listeTiragesParticipant(session.participantId);
+    gains = tirages.filter((t) => t.statut === "gagne");
+    dejaJoue = tirages.length > 0;
   }
+  const premierGain = gains[0] ?? null;
 
   return (
     <div className="flex flex-col gap-3.5">
@@ -62,12 +69,37 @@ async function Contenu() {
           <p className="font-titre text-[15px] font-semibold text-creme">
             Vous avez déjà participé
           </p>
-          <p className="text-[11.5px] leading-snug text-cendre/75">
-            Votre résultat vous attend. Une seule participation par numéro.
-          </p>
+          {premierGain ? (
+            <div className="rounded-xl border border-or/25 bg-or/[0.06] px-2.5 py-2">
+              <p className="font-titre text-[13px] leading-tight font-bold text-or-clair">
+                {premierGain.cadeau_nom ?? "Cadeau"}
+              </p>
+              <p className="mt-0.5 text-[11px] leading-snug text-cendre/80">
+                {premierGain.recupere
+                  ? "Déjà retiré en boutique"
+                  : tempsRestant(premierGain.expire_le)
+                    ? `À retirer avant ${new Date(premierGain.expire_le).toLocaleDateString("fr-FR", {
+                        day: "2-digit",
+                        month: "long",
+                      })}`
+                    : "Bon expiré"}
+                {gains.length > 1 ? ` · ${gains.length} cadeaux en tout` : ""}
+              </p>
+            </div>
+          ) : (
+            <p className="text-[11.5px] leading-snug text-cendre/75">
+              Votre résultat vous attend. Une seule participation par numéro.
+            </p>
+          )}
           <div className="flex gap-1.5">
             <Link href="/roue" className="btn-or flex-1 !py-2.5 text-[12.5px]">
               Revoir mon résultat
+            </Link>
+            <Link
+              href="/resultat"
+              className="btn-fantome flex-1 !py-2.5 text-[12.5px]"
+            >
+              Mes cadeaux
             </Link>
           </div>
         </div>

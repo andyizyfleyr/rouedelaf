@@ -290,7 +290,35 @@ DECLARE
   v_statut     text;
   v_alphabet   text := 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; -- sans I, O, 0, 1 (lisibilité)
   v_try        integer := 0;
+  v_tours_max  integer;
+  v_bonus      integer;
+  v_deja       integer;
+  v_bloque     boolean;
 BEGIN
+  -- 0) VERROU SUR LE PARTICIPANT + VÉRIFICATION DU DROIT DE JOUER.
+  --    C'est ici, et pas dans Node, que « un tour par personne » est garanti :
+  --    deux onglets (ou deux clics très rapprochés) arrivent en parallèle sur
+  --    ce même verrou et sont sérialisés. Le second voit le tirage du premier
+  --    et repart avec une erreur TOURS_EPUISES au lieu d'un deuxième cadeau.
+  SELECT tours_bonus, bloque INTO v_bonus, v_bloque
+    FROM participants
+   WHERE id = p_participant_id
+   FOR UPDATE;
+
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'PARTICIPANT_INTROUVABLE' USING ERRCODE = 'P0001';
+  END IF;
+  IF v_bloque THEN
+    RAISE EXCEPTION 'PARTICIPANT_BLOQUE' USING ERRCODE = 'P0001';
+  END IF;
+
+  v_tours_max := param_int('tours_max', 1);
+  SELECT count(*)::int INTO v_deja FROM tirages WHERE participant_id = p_participant_id;
+
+  IF v_deja >= v_tours_max + COALESCE(v_bonus, 0) THEN
+    RAISE EXCEPTION 'TOURS_EPUISES' USING ERRCODE = 'P0001';
+  END IF;
+
   -- 1) Verrou pessimiste sur la ligne du cadeau : deux joueurs simultanés
   --    ne peuvent pas décrémenter le même stock en dessous de zéro.
   IF p_cadeau_id IS NOT NULL THEN
@@ -343,7 +371,7 @@ END;
 $$;
 
 COMMENT ON FUNCTION enregistrer_tirage IS
-  'Enregistre un tirage de façon atomique : décrémente le stock avec verrou, génère le code unique, calcule l''expiration.';
+  'Enregistre un tirage de façon atomique : verrouille le participant, vérifie ses tours restants, décrémente le stock avec verrou, génère le code unique et calcule l''expiration.';
 
 -- ============================================================================
 --  VUE « DERNIERS GAGNANTS » (écran boutique /admin/ecran, Realtime)

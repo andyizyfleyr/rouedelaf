@@ -2,11 +2,11 @@ import { Suspense } from "react";
 import { redirect } from "next/navigation";
 
 import { EcranRoue } from "@/components/client/EcranRoue";
-import { sql } from "@/lib/db";
 import { construireCases } from "@/lib/roue";
+import { sql } from "@/lib/db";
 import { lireSessionJeu } from "@/lib/session";
 import { chargerCadeauxRoue, toursRestants } from "@/server/tirage";
-import { tirageParId } from "@/server/data";
+import { listeTiragesParticipant } from "@/server/data";
 import { lireParametres } from "@/server/params";
 import { boutique } from "@/lib/env";
 import QRCode from "qrcode";
@@ -50,36 +50,37 @@ async function Contenu() {
 
   const restants = await toursRestants(session.participantId);
 
-  // Aucun tour disponible : le joueur a déjà son résultat. On le lui prépare
-  // et le composant client ouvrira la popup. ⚠️ Aucune redirection ici : une
-  // redirection automatique arrachait le joueur de la page sans qu'il l'ait
-  // demandé.
-  let tirageInitial = null;
-  let qrInitial: string | null = null;
-  let messagePerdu = "Pas de chance cette fois !";
+  /**
+   * Tours gagnés en parrainant et pas encore utilisés : c'est ce qui explique
+   * au joueur pourquoi il peut rejouer alors qu'il a déjà un cadeau.
+   */
+  const parametres = await lireParametres();
+  const [participant] = await sql`
+    SELECT tours_bonus FROM participants WHERE id = ${session.participantId}
+  `;
+  // Les tours de base sont consommés en premier : un bonus « encore disponible »
+  // est donc simplement un tour restant que les tours de base ne couvrent pas.
+  const bonusTotal = Number(participant?.tours_bonus ?? 0);
+  const bonusRestant = Math.max(Math.min(bonusTotal, restants - Math.min(restants, parametres.toursMax)), 0);
 
-  if (restants <= 0) {
-    const [dernier] = await sql`
-      SELECT id FROM tirages WHERE participant_id = ${session.participantId}
-      ORDER BY created_at DESC, id DESC LIMIT 1
-    `;
-    if (dernier) {
-      const tirage = await tirageParId(Number(dernier.id));
-      if (tirage) {
-        tirageInitial = tirage;
-        messagePerdu = (await lireParametres()).messagePerdu;
-        if (tirage.statut === "gagne" && tirage.code_unique) {
-          // Le QR est généré côté serveur : il s'affiche même si le client
-          // n'a pas de connexion stable au moment d'ouvrir la popup.
-          qrInitial = await QRCode.toDataURL(tirage.code_unique, {
-            errorCorrectionLevel: "M",
-            margin: 1,
-            width: 420,
-            color: { dark: "#0a0908", light: "#f8e7a8" },
-          });
-        }
-      }
-    }
+  // Tous les tirages du joueur (pas seulement le dernier) : dès qu'un second
+  // cadeau est gagné (parrainage, tours offerts), le premier doit rester
+  // consultable. Avant, seul le dernier était affiché et l'autre bon devenait
+  // invisible alors qu'il restait valide en boutique.
+  const tiragesInitiaux = await listeTiragesParticipant(session.participantId);
+  const messagePerdu = parametres.messagePerdu;
+
+  // QR du dernier gain, généré côté serveur : il s'affiche même si le client
+  // n'a pas de connexion stable au moment d'ouvrir la popup.
+  let qrInitial: string | null = null;
+  const dernierGagne = tiragesInitiaux.find((t) => t.statut === "gagne" && t.code_unique);
+  if (dernierGagne?.code_unique) {
+    qrInitial = await QRCode.toDataURL(dernierGagne.code_unique, {
+      errorCorrectionLevel: "M",
+      margin: 1,
+      width: 420,
+      color: { dark: "#0a0908", light: "#f8e7a8" },
+    });
   }
 
   const cadeaux = await chargerCadeauxRoue();
@@ -99,7 +100,15 @@ async function Contenu() {
       cases={cases}
       nom={session.nom}
       toursRestants={restants}
-      tirageInitial={tirageInitial}
+      toursBonus={bonusRestant}
+      jeuOuvert={parametres.activeJeu}
+      lotsDisponibles={cadeaux.some((c) => Number(c.stock) > 0 && Number(c.probabilite) > 0)}
+      messageFermeture={
+        parametres.activeJeu
+          ? "Tous les cadeaux ont été gagnés ! La boutique recharge la roue, revenez très bientôt."
+          : "Le jeu est momentanément en pause. Revenez un peu plus tard, votre tour vous attend."
+      }
+      tiragesInitiaux={tiragesInitiaux}
       qrInitial={qrInitial}
       messagePerdu={messagePerdu}
       boutique={{ nom: boutique.nom, adresse: boutique.adresse, whatsapp: boutique.whatsapp }}

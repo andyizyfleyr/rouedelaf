@@ -172,6 +172,29 @@ export async function tirageParId(id: number): Promise<TirageResultat | null> {
   return (ligne as TirageResultat) ?? null;
 }
 
+/**
+ * Tous les tirages d'un participant, du plus récent au plus ancien.
+ *
+ * Indispensable dès qu'un joueur peut gagner plusieurs cadeaux : sans cette
+ * liste, le second gain rendait le premier inaccessible (le code restait
+ * valable en base mais le client n'avait plus aucun moyen de l'afficher).
+ */
+export async function listeTiragesParticipant(participantId: number): Promise<TirageResultat[]> {
+  const lignes = await sql`
+    SELECT
+      t.id, t.statut, t.code_unique, t.recupere, t.expire_le, t.created_at,
+      c.nom AS cadeau_nom, c.couleur AS cadeau_couleur, c.icone AS cadeau_icone,
+      c.description AS cadeau_description, c.image_url AS cadeau_image_url,
+      (SELECT NULLIF(valeur, '')::int FROM parametres WHERE cle = 'reduction_consolation') AS reduction_consolation
+    FROM tirages t
+    LEFT JOIN cadeaux c ON c.id = t.cadeau_id
+    WHERE t.participant_id = ${participantId}
+    ORDER BY t.created_at DESC, t.id DESC
+    LIMIT 50
+  `;
+  return lignes as TirageResultat[];
+}
+
 /** Dernier tirage d'un participant (pour la page /resultat). */
 export async function dernierTirageParticipant(
   participantId: number,

@@ -1,0 +1,152 @@
+-- ============================================================================
+--  MIGRATIONS — rejouées à chaque démarrage de l'application
+--  Fichier : sql/migrations.sql
+--
+--  Pourquoi ce fichier existe : une base déjà en production contient les
+--  données du jeu, on ne peut donc pas rejouer `schema.sql` (création) pour
+--  corriger une fonction. On applique ici uniquement les remplacements
+--  idempotents, sans jamais toucher aux données.
+--
+--  ⚠ Toute évolution du schéma doit être écrite ici ET dans schema.sql, pour
+--  que les bases neuves et les bases existantes convergent.
+-- ============================================================================
+
+-- ----------------------------------------------------------------------------
+--  M1. « Un tour par personne » garanti par la base
+--
+--  L'ancienne version comptait les tours uniquement dans Node : deux onglets
+--  simultanés pouvaient chacun créer un tirage. La fonction verrouille
+--  désormais la ligne du participant (FOR UPDATE) et vérifie son droit à jouer
+--  dans la même transaction que l'insertion.
+-- ----------------------------------------------------------------------------
+CREATE OR REPLACE FUNCTION public.enregistrer_tirage(
+  p_participant_id bigint,
+  p_cadeau_id      bigint,           -- NULL = tirage perdu
+  p_duree_jours    integer DEFAULT 14,
+  p_tour_bonus     boolean DEFAULT false,
+  p_appareil       text DEFAULT NULL,
+  p_ip_hash        text DEFAULT NULL
+)
+RETURNS TABLE (
+  tirage_id   bigint,
+  cadeau_id   bigint,
+  code_unique text,
+  expire_le   timestamptz,
+  statut      text
+)
+LANGUAGE plpgsql
+AS $$
+DECLARE
+  v_stock      integer;
+  v_code       text;
+  v_tirage_id  bigint;
+  v_expire     timestamptz;
+  v_statut     text;
+  v_alphabet   text := 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  v_try        integer := 0;
+  v_tours_max  integer;
+  v_bonus      integer;
+  v_deja       integer;
+  v_bloque     boolean;
+BEGIN
+  SELECT tours_bonus, bloque INTO v_bonus, v_bloque
+    FROM participants
+   WHERE id = p_participant_id
+   FOR UPDATE;
+
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'PARTICIPANT_INTROUVABLE' USING ERRCODE = 'P0001';
+  END IF;
+  IF v_bloque THEN
+    RAISE EXCEPTION 'PARTICIPANT_BLOQUE' USING ERRCODE = 'P0001';
+  END IF;
+
+  v_tours_max := param_int('tours_max', 1);
+  SELECT count(*)::int INTO v_deja FROM tirages WHERE participant_id = p_participant_id;
+
+  IF v_deja >= v_tours_max + COALESCE(v_bonus, 0) THEN
+    RAISE EXCEPTION 'TOURS_EPUISES' USING ERRCODE = 'P0001';
+  END IF;
+
+  IF p_cadeau_id IS NOT NULL THEN
+    SELECT stock INTO v_stock
+      FROM cadeaux
+     WHERE id = p_cadeau_id AND actif
+     FOR UPDATE;
+
+    IF NOT FOUND OR v_stock IS NULL OR v_stock <= 0 THEN
+      RAISE EXCEPTION 'CADEAU_INDISPONIBLE' USING ERRCODE = 'P0001';
+    END IF;
+
+    UPDATE cadeaux SET stock = stock - 1 WHERE id = p_cadeau_id;
+    v_statut := 'gagne';
+  ELSE
+    v_statut := 'perdu';
+  END IF;
+
+  v_expire := now() + make_interval(days => GREATEST(p_duree_jours, 1));
+
+  IF v_statut = 'gagne' THEN
+    LOOP
+      v_try := v_try + 1;
+      v_code := 'ROUE-' ||
+        upper(substr(md5(random()::text || clock_timestamp()::text || p_participant_id::text), 1, 4)) ||
+        '-' ||
+        upper(
+          substr(v_alphabet, 1 + floor(random() * 8)::int, 1) ||
+          substr(v_alphabet, 1 + floor(random() * 8)::int, 1)
+        );
+      EXIT WHEN NOT EXISTS (SELECT 1 FROM tirages t WHERE t.code_unique = v_code);
+      IF v_try > 8 THEN
+        RAISE EXCEPTION 'CODE_UNIQUE_IMPOSSIBLE';
+      END IF;
+    END LOOP;
+  END IF;
+
+  INSERT INTO tirages (
+    participant_id, cadeau_id, code_unique, statut, expire_le, tour_bonus, appareil, ip_hash
+  )
+  VALUES (
+    p_participant_id, p_cadeau_id, v_code, v_statut, v_expire, p_tour_bonus, p_appareil, p_ip_hash
+  )
+  RETURNING id INTO v_tirage_id;
+
+  RETURN QUERY SELECT v_tirage_id, p_cadeau_id, v_code, v_expire, v_statut;
+END;
+$$;
+
+-- ----------------------------------------------------------------------------
+--  M2. Numéros béninois stockés en double (13 chiffres)
+--
+--  Bug corrigé : le formulaire envoyait « 229 » + « 0179392678 » (10 chiffres
+--  locaux), soit 13 chiffres en base. L'identité du numéro béninois est
+--  `229` + 8 chiffres : sans cette réparation, un client déjà inscrit pouvait
+--  rejouer en saisissant le même numéro sous son autre écriture.
+--
+--  On ne touche qu'aux lignes strictement conformes au motif fautif
+--  (229 01 XXXXXXXX) et seulement si le numéro corrigé n'existe pas déjà.
+-- ----------------------------------------------------------------------------
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns
+     WHERE table_schema = 'public' AND table_name = 'participants'
+       AND column_name = 'telephone'
+  ) THEN
+    WITH fautifs AS (
+      SELECT id, telephone, '229' || substr(telephone, 6) AS corrige
+        FROM participants
+       WHERE telephone ~ '^22901[0-9]{8}$'
+    ), reparables AS (
+      SELECT f.*
+        FROM fautifs f
+       WHERE NOT EXISTS (SELECT 1 FROM participants p WHERE p.telephone = f.corrige)
+    )
+    UPDATE participants p
+       SET telephone = r.corrige,
+           telephone_aff = '+229 ' || substr(r.corrige, 4, 2) || ' ' || substr(r.corrige, 6, 2)
+                           || ' ' || substr(r.corrige, 8, 2) || ' ' || substr(r.corrige, 10, 2)
+      FROM reparables r
+     WHERE p.id = r.id;
+  END IF;
+END $$;

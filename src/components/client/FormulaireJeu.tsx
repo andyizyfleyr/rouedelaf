@@ -6,7 +6,7 @@ import { useEffect, useState } from "react";
 import { ArrowRight, Gift, Loader2, Lock, Sparkles, Trophy } from "lucide-react";
 
 import { BoutonOr } from "@/components/ui/Base";
-import { normaliserSource } from "@/lib/format";
+import { normaliserSource, telephoneLocalValide } from "@/lib/format";
 import { deverrouillerAudio } from "@/lib/sons";
 import { suivreEvenement } from "@/lib/pixel";
 import { identifiantAppareil, entetesJeu } from "@/lib/appareil";
@@ -47,7 +47,10 @@ export function FormulaireJeu() {
   }, [source, ref]);
 
   const chiffres = telephone.replace(/\D/g, "");
-  const telephoneValide = chiffres.length >= 8;
+  // ⚠ Ne pas se contenter de « au moins 8 chiffres » : sur +229, 10 chiffres
+  // passaient et créaient un numéro inexistant. On vérifie la longueur
+  // attendue pour l'indicatif choisi.
+  const telephoneValide = telephoneLocalValide(indicatif, chiffres);
   const nomValide = nom.trim().length >= 2;
   const pret = nomValide && telephoneValide && consentement && !chargement;
 
@@ -164,9 +167,17 @@ export function FormulaireJeu() {
               telephoneValide ? "text-or-clair/90" : "text-cendre/55"
             }`}
           >
-            {telephoneValide
-              ? `Vérifiez : +${indicatif} ${chiffres.replace(/(\d{2})(?=\d)/g, "$1 ").trim()}`
-              : "Un seul tour par numéro."}
+            {telephoneValide ? (
+              `Vérifiez : +${indicatif} ${chiffres.replace(/(\d{2})(?=\d)/g, "$1 ").trim()}`
+            ) : chiffres.length > 0 ? (
+              <span className="text-rose-200/85">
+                {indicatif === "229" ? "Un numéro béninois compte 10 chiffres" : "Numéro incomplet"}
+                {" — "}
+                il doit en compter {indicatif === "229" ? "10" : "9 ou 10"}.
+              </span>
+            ) : (
+              "Un seul tour par numéro."
+            )}
           </p>
         </div>
 

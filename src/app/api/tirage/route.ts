@@ -3,8 +3,25 @@ import { NextResponse } from "next/server";
 import { ErreurMetier, traduireErreur } from "@/lib/db";
 import { verifierLimite, prendreVerrou, libererVerrou } from "@/lib/rate-limit";
 import { lireSessionJeu } from "@/lib/session";
+import { listeTiragesParticipant } from "@/server/data";
 import { empreinteAppareil, hasherIp, lireIp } from "@/server/contexte";
 import { effectuerTirage } from "@/server/tirage";
+
+/**
+ * GET /api/tirage — tous les tirages du joueur connecté (« mes cadeaux »).
+ *
+ * Sert à ne perdre aucun gain : un participant peut gagner plusieurs cadeaux
+ * (parrainage, tours offerts) et doit pouvoir rouvrir CHACUN d'eux. Avant,
+ * seul le dernier était accessible.
+ */
+export async function GET() {
+  const session = await lireSessionJeu();
+  if (!session) {
+    return NextResponse.json({ erreur: "Session expirée." }, { status: 401 });
+  }
+  const tirages = await listeTiragesParticipant(session.participantId);
+  return NextResponse.json({ tirages }, { headers: { "Cache-Control": "no-store" } });
+}
 
 /**
  * POST /api/tirage — LE TIRAGE (décision serveur uniquement)
@@ -65,7 +82,13 @@ export async function POST(request: Request) {
   } catch (e) {
     if (e instanceof ErreurMetier) {
       const statut =
-        e.code === "BLOQUE" ? 403 : e.code === "NON_TROUVE" ? 404 : 409;
+        e.code === "BLOQUE"
+          ? 403
+          : e.code === "NON_TROUVE"
+            ? 404
+            : e.code === "AUCUN_LOT"
+              ? 409
+              : 409;
       return NextResponse.json({ erreur: e.message, code: e.code }, { status: statut });
     }
     const traduit = traduireErreur(e);

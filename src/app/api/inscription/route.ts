@@ -4,7 +4,13 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { ErreurMetier, traduireErreur } from "@/lib/db";
-import { normaliserSource, normaliserTelephone, formaterTelephone } from "@/lib/format";
+import {
+  formaterTelephone,
+  longueursAttendues,
+  normaliserSource,
+  normaliserTelephone,
+  telephoneLocalValide,
+} from "@/lib/format";
 import { verifierLimite } from "@/lib/rate-limit";
 import {
   creerParticipant,
@@ -75,9 +81,23 @@ export async function POST(request: Request) {
   }
 
   const telephone = normaliserTelephone(donnees.telephone);
-  if (telephone.length < 8 || telephone.length > 15) {
+  // Longueur contrôlée PAR PAYS, pas seulement « entre 8 et 15 chiffres » :
+  // un numéro béninois de 13 chiffres était accepté et créait un client
+  // impossible à joindre.
+  const indicatifTrouve = ["229", "228", "234", "225", "226", "221"].find((i) =>
+    telephone.startsWith(i),
+  );
+  const local = indicatifTrouve ? telephone.slice(indicatifTrouve.length) : telephone;
+  const longueurOk = indicatifTrouve
+    ? telephoneLocalValide(indicatifTrouve, local)
+    : longueursAttendues("+").includes(telephone.length) ||
+      (telephone.length >= 8 && telephone.length <= 15);
+  if (telephone.length < 8 || telephone.length > 15 || !longueurOk) {
     return NextResponse.json(
-      { erreur: "Numéro WhatsApp invalide. Exemple : 97 12 34 56." },
+      {
+        erreur:
+          "Numéro WhatsApp invalide. Exemple : 97 12 34 56 (10 chiffres au Bénin, en comptant le 01).",
+      },
       { status: 400 },
     );
   }

@@ -142,6 +142,20 @@ export async function effectuerTirage(
     })),
   );
 
+  // 2 bis) AUCUN LOT DISPONIBLE → on refuse le tirage.
+  //    Avant, la roue s'affichait avec des cases « Perdu » et le joueur
+  //    consommait son tour pour rien, alors que l'accroche promet un cadeau.
+  //    On préfère un message clair et NE PAS consommer de tour.
+  const lotsDisponibles = cadeaux.filter(
+    (c) => Number(c.stock) > 0 && Number(c.probabilite) > 0,
+  );
+  if (lotsDisponibles.length === 0) {
+    throw new ErreurMetier(
+      "Tous les cadeaux ont été gagnés ! Revenez demain, la boutique recharge la roue.",
+      "AUCUN_LOT",
+    );
+  }
+
   // 3) Sélection cryptographique du lot, avec réessai si épuisement concurrent.
   let dernierEchec: unknown = null;
 
@@ -202,6 +216,9 @@ export async function effectuerTirage(
       };
     } catch (e) {
       const traduit = traduireErreur(e);
+      // La base a refusé : soit le lot vient d'être épuisé (on retente), soit
+      // le participant n'a plus de tour (deux onglets, clic double) ou est
+      // bloqué : dans ces cas on remonte l'erreur telle quelle.
       if (traduit.code !== "CADEAU_INDISPONIBLE") throw traduit;
       // Le lot vient d'être épuisé par un autre joueur : on retire ce lot du
       // stock local et on retente immédiatement (sans afficher d'erreur).

@@ -23,7 +23,9 @@ export const CASE_PERDUE: CadeauRoue = {
   // Bordeaux profond : un gris neutre rendait la roue terne, alors que le
   // rouge sombre s'accorde avec l'or et reste clairement « pas de cadeau ».
   couleur: "#4A1018",
-  icone: "😅",
+  // L'emoji n'est jamais affiché sur la roue (rendu inégal selon les
+  // téléphones, souvent un carré vide) : l'icône vient de IconeCadeau.
+  icone: "",
   probabilite: 0,
   stock: 0,
 };
@@ -41,32 +43,39 @@ export const CASE_PERDUE: CadeauRoue = {
  *   et sans ambiguïté pour l'aiguille (pas de superposition à 180°).
  */
 export function construireCases(cadeaux: CadeauRoue[]): CadeauRoue[] {
-  const cases = cadeaux.filter((c) => c.probabilite > 0).map((c) => ({ ...c }));
+  const lots = cadeaux.filter((c) => c.probabilite > 0).map((c) => ({ ...c }));
 
-  let indexPerdu = 0;
-  while (cases.length < CASES_MIN) {
-    cases.splice(repartitionPerdue(cases.length + 1), 0, {
-      ...CASE_PERDUE,
-      // id unique négatif pour la clé React
-      id: -1 - indexPerdu,
-    });
-    indexPerdu += 1;
+  if (lots.length === 0) {
+    // Aucun lot : la roue ne sert à rien, mais elle doit rester géométriquement
+    // valide (cela n'arrive plus en pratique : le serveur refuse le tirage).
+    return Array.from({ length: CASES_MIN }, (_, i) => ({ ...CASE_PERDUE, id: -1 - i }));
   }
 
-  // Nombre pair garanti (voir commentaire plus haut).
-  if (cases.length % 2 === 1) {
-    cases.splice(repartitionPerdue(cases.length + 1), 0, {
-      ...CASE_PERDUE,
-      id: -100 - indexPerdu,
-    });
+  // Objectif : au moins CASES_MIN cases, et un nombre PAIR (deux cases
+  // diamétralement opposées ont alors des secteurs de même taille, donc des
+  // centres distincts : l'aiguille ne peut pas hésiter entre deux cases).
+  const total = Math.max(CASES_MIN, lots.length + (lots.length % 2 === 0 ? 0 : 1));
+  const cible = total % 2 === 0 ? total : total + 1;
+  const perdus = Math.max(cible - lots.length, 0);
+
+  // Répartition : on place les lots régulièrement sur le cercle et on glisse
+  // les « Perdu » dans les trous. Avec p <= lots, ils ne se touchent JAMAIS
+  // (avant, 6 lots donnaient 5 paires de « Perdu » collées : la roue semblait
+  // cassée). Au-delà, des paires sont inévitables, mais restent minoritaires.
+  const cases: CadeauRoue[] = [];
+  let indexPerdu = 0;
+  for (let i = 0; i < cible; i += 1) {
+    const positionLot = Math.floor((i * lots.length) / cible);
+    const estLot = Math.floor(((i + 1) * lots.length) / cible) > positionLot;
+    if (estLot || indexPerdu >= perdus) {
+      cases.push(lots[positionLot] ?? { ...CASE_PERDUE, id: -1 - indexPerdu++ });
+    } else {
+      // id unique négatif pour la clé React
+      cases.push({ ...CASE_PERDUE, id: -1 - indexPerdu++ });
+    }
   }
 
   return cases;
-}
-
-/** Position d'insertion d'une case « Perdu » : répartie sur la roue. */
-function repartitionPerdue(tailleFinale: number): number {
-  return Math.min(Math.floor(tailleFinale / 3), tailleFinale - 1);
 }
 
 /** Angle (degrés) occupé par chaque case. */

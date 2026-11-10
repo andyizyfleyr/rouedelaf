@@ -5,7 +5,7 @@ import { Suspense } from "react";
 import { EcranResultat } from "@/components/client/EcranResultat";
 import { boutique } from "@/lib/env";
 import { lireSessionJeu } from "@/lib/session";
-import { dernierTirageParticipant, tirageParId } from "@/server/data";
+import { listeTiragesParticipant, tirageParId } from "@/server/data";
 import { lireParametres } from "@/server/params";
 
 export const metadata = {
@@ -16,9 +16,15 @@ export const metadata = {
 /**
  * /resultat?t=ID — écran de fin.
  *
- * Le QR code du cadeau est généré CÔTÉ SERVEUR (lib qrcode), jamais côté
- * client : le code reste donc utilisable hors ligne et sans dépendance JS.
- * Un client ne peut consulter que SES propres tirages (session obligatoire).
+ * Trois usages :
+ *  1. `?t=ID` : un cadeau précis (lien « Plein écran » de la popup).
+ *  2. sans paramètre : TOUS les cadeaux du joueur, du plus récent au plus
+ *     ancien. Avant, seul le dernier était affiché : dès qu'un joueur gagnait
+ *     deux lots (parrainage), le premier bon devenait inaccessible alors
+ *     qu'il restait valable en boutique.
+ *  3. filet de sécurité si le JavaScript est coupé.
+ *
+ * Le QR code est généré CÔTÉ SERVEUR : il reste utilisable sans JS.
  */
 export default function PageResultat({ searchParams }: PageProps<"/resultat">) {
   return (
@@ -45,47 +51,74 @@ async function Contenu({ searchParams }: { searchParams: PageProps<"/resultat">[
 
   const { t } = await searchParams;
   const idDemande = t ? Number.parseInt(String(t), 10) : NaN;
-
-  const tirage = Number.isFinite(idDemande)
-    ? await tirageParId(idDemande)
-    : await dernierTirageParticipant(session.participantId);
-
-  if (!tirage) redirect("/roue");
-
-  // Sécurité : on vérifie que le tirage appartient bien au participant.
-  const [proprietaire] = await verifierProprietaire(tirage.id);
-  if (!proprietaire) redirect("/roue");
-
   const parametres = await lireParametres();
 
-  // QR code du code cadeau : contenu = code seul, lu par /admin/scan.
-  const qrDataUrl =
-    tirage.statut === "gagne" && tirage.code_unique
-      ? await QRCode.toDataURL(tirage.code_unique, {
-          errorCorrectionLevel: "M",
-          margin: 1,
-          width: 420,
-          color: { dark: "#0a0908", light: "#f8e7a8" },
-        })
+  if (Number.isFinite(idDemande)) {
+    const tirage = await tirageParId(idDemande);
+    // Sécurité : un joueur ne voit que SES tirages.
+    if (!tirage || !(await estProprietaire(tirage.id, session.participantId))) redirect("/roue");
+
+    const qrDataUrl = tirage.statut === "gagne" && tirage.code_unique
+      ? await qr(tirage.code_unique)
       : null;
 
+    return (
+      <EcranResultat
+        tirage={tirage}
+        qrDataUrl={qrDataUrl}
+        messagePerdu={parametres.messagePerdu}
+        boutique={{ nom: boutique.nom, adresse: boutique.adresse, whatsapp: boutique.whatsapp }}
+      />
+    );
+  }
+
+  const tirages = await listeTiragesParticipant(session.participantId);
+  if (tirages.length === 0) redirect("/roue");
+
+  // Un QR par gain : le joueur doit pouvoir présenter n'importe lequel.
+  const entrees = await Promise.all(
+    tirages.map(async (tirage) => ({
+      tirage,
+      qrDataUrl:
+        tirage.statut === "gagne" && tirage.code_unique ? await qr(tirage.code_unique) : null,
+    })),
+  );
+
   return (
-    <EcranResultat
-      tirage={tirage}
-      qrDataUrl={qrDataUrl}
-      messagePerdu={parametres.messagePerdu}
-      boutique={{ nom: boutique.nom, adresse: boutique.adresse, whatsapp: boutique.whatsapp }}
-    />
+    <div className="flex flex-col gap-3">
+      {tirages.length > 1 && (
+        <p className="text-center text-[11px] tracking-[0.16em] text-cendre/60 uppercase">
+          {tirages.length} cadeaux gagnés
+        </p>
+      )}
+      {entrees.map(({ tirage, qrDataUrl }, i) => (
+        <EcranResultat
+          key={tirage.id}
+          tirage={tirage}
+          qrDataUrl={qrDataUrl}
+          messagePerdu={parametres.messagePerdu}
+          boutique={{ nom: boutique.nom, adresse: boutique.adresse, whatsapp: boutique.whatsapp }}
+          rang={{ position: i + 1, total: entrees.length }}
+        />
+      ))}
+    </div>
   );
 }
 
-async function verifierProprietaire(tirageId: number): Promise<[{ ok: boolean } | null]> {
-  const session = await lireSessionJeu();
-  if (!session) return [null];
+function qr(code: string): Promise<string> {
+  return QRCode.toDataURL(code, {
+    errorCorrectionLevel: "M",
+    margin: 1,
+    width: 420,
+    color: { dark: "#0a0908", light: "#f8e7a8" },
+  });
+}
+
+async function estProprietaire(tirageId: number, participantId: number): Promise<boolean> {
   const { sql } = await import("@/lib/db");
   const [ligne] = await sql`
     SELECT 1 AS ok FROM tirages
-    WHERE id = ${tirageId} AND participant_id = ${session.participantId}
+    WHERE id = ${tirageId} AND participant_id = ${participantId}
   `;
-  return [(ligne as { ok: boolean } | undefined) ?? null];
+  return Boolean(ligne);
 }

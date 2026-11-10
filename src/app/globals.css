@@ -288,3 +288,36 @@ body {
   vertical-align: middle;
 }
 .tableau-admin tbody tr:hover { background: rgba(232, 198, 106, 0.045); }
+
+/* --------------------------------------------------------------------------
+   Popup de résultat sur petit écran
+   Le contenu (cadeau, code, QR, dates, partage, boutons) dépasse parfois la
+   hauteur d'un téléphone 320x568. On rend le défilement ÉVIDENT : une fine
+   barre dorée à droite, et un dégradé en bas qui indique qu'il reste du
+   contenu. Sans cela, les boutons du bas semblaient absents.
+   -------------------------------------------------------------------------- */
+.popup-defilante {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(232, 198, 106, 0.55) transparent;
+  background-image: linear-gradient(to top, rgba(10, 9, 8, 0.92), transparent 42px);
+  background-attachment: local, scroll;
+}
+.popup-defilante::-webkit-scrollbar {
+  width: 5px;
+}
+.popup-defilante::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: rgba(232, 198, 106, 0.55);
+}
+
+/* --------------------------------------------------------------------------
+   Bouton d'action du jeu
+   Sur un écran de 320 px, « Tourner la roue » ne tient pas sur une ligne avec
+   l'icône : le libellé était coupé. On laisse le texte passer à la ligne et on
+   garantit une hauteur minimale (au lieu de forcer une seule ligne).
+   -------------------------------------------------------------------------- */
+.btn-or {
+  min-height: 2.75rem;
+  white-space: normal;
+  line-height: 1.15;
+}

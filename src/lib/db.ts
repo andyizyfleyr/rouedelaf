@@ -122,6 +122,8 @@ async function executerBrut(texte: string, parametres: unknown[]): Promise<Ligne
  */
 let schemaPret = false;
 let verificationEnCours: Promise<void> | null = null;
+/** Version de schéma déjà appliquée par ce processus (voir MIGRATIONS). */
+const VERSION_SCHEMA = 3;
 
 async function verifierSchema(): Promise<void> {
   if (schemaPret) return;
@@ -136,6 +138,11 @@ async function verifierSchema(): Promise<void> {
           const { initialiserBase } = await import("@/server/init");
           await initialiserBase({ forcer: false });
           console.warn("[db] schéma créé.");
+        } else {
+          // Base déjà en service : on applique les migrations (remplacements
+          // de fonctions uniquement, aucune donnée touchée). C'est ce qui
+          // corrige une base créée avant la correction « un tour par personne ».
+          await appliquerMigrations();
         }
         schemaPret = true;
       } catch (e) {
@@ -148,6 +155,88 @@ async function verifierSchema(): Promise<void> {
     })();
   }
   await verificationEnCours;
+}
+
+/**
+ * Applique `sql/migrations.sql` une seule fois par processus.
+ *
+ * Pourquoi pas `schema.sql` ? Il crée les tables ; sur une base déjà remplie
+ * il ne servirait à rien et pourrait surprendre (re-seed). Les migrations ne
+ * contiennent que des `CREATE OR REPLACE FUNCTION` : rejouables à l'infini.
+ *
+ * Un échec n'est jamais bloquant : on continue avec l'ancienne version du
+ * schéma (l'application reste fonctionnelle) et on réessaiera au prochain
+ * démarrage à froid.
+ */
+async function appliquerMigrations(): Promise<void> {
+  try {
+    const [ligne] = await executerBrut(
+      "SELECT COALESCE((SELECT valeur FROM parametres WHERE cle = 'schema_version'), '0') AS v",
+      [],
+    );
+    if (Number((ligne as { v?: string } | undefined)?.v ?? 0) >= VERSION_SCHEMA) return;
+
+    const { readFileSync } = await import("node:fs");
+    const path = await import("node:path");
+    const fichier = path.join(process.cwd(), "sql", "migrations.sql");
+    let script: string;
+    try {
+      script = readFileSync(fichier, "utf8");
+    } catch {
+      // Fonction absente dans le bundle serverless : on n'invente rien.
+      return;
+    }
+
+    // Les deux pilotes acceptent une requête à la fois : on découpe le script
+    // en blocs (en respectant les corps `$$ … $$` des fonctions).
+    const instructions = decouperBlocsSql(script);
+
+    if (neonHttp) {
+      // Neon HTTP : on rejoue seulement les blocs utiles, un par un.
+      for (const bloc of decouperBlocsSql(script)) {
+        await neonHttp.query(bloc, [] as never);
+      }
+    } else {
+      const pool = obtenirPool();
+      const client = await pool.connect();
+      try {
+        for (const instruction of instructions) await client.query(instruction);
+      } finally {
+        client.release();
+      }
+    }
+
+    await executerBrut(
+      `INSERT INTO parametres (cle, valeur, description)
+       VALUES ('schema_version', $1, 'Version du schéma appliquée automatiquement')
+       ON CONFLICT (cle) DO UPDATE SET valeur = $1`,
+      [String(VERSION_SCHEMA)],
+    );
+    console.warn(`[db] migrations appliquées (version ${VERSION_SCHEMA}).`);
+  } catch (e) {
+    console.warn("[db] migrations non appliquées (on continue)", e);
+  }
+}
+
+/** Découpe un script SQL en blocs terminés par `;` en dehors des `$$`. */
+function decouperBlocsSql(script: string): string[] {
+  const blocs: string[] = [];
+  let courant = "";
+  let dansDollar = false;
+  const lignes = script.split("\n");
+  for (const ligne of lignes) {
+    const sansCommentaire = ligne.trimStart().startsWith("--") ? "" : ligne;
+    courant += `${sansCommentaire}\n`;
+    const occurrences = (sansCommentaire.match(/\$\$/g) ?? []).length;
+    if (occurrences % 2 === 1) dansDollar = !dansDollar;
+    if (!dansDollar && sansCommentaire.trimEnd().endsWith(";")) {
+      const bloc = courant.trim();
+      if (bloc && bloc !== ";") blocs.push(bloc);
+      courant = "";
+    }
+  }
+  if (courant.trim()) blocs.push(courant.trim());
+  return blocs;
 }
 
 /**
@@ -173,7 +262,11 @@ export type CodeErreurMetier =
   | "DEJA_PARTICIPE"
   | "NON_TROUVE"
   | "CONFLIT"
-  | "BLOQUE";
+  | "BLOQUE"
+  /** Le participant a déjà utilisé tous ses tours (vérifié en base). */
+  | "TOURS_EPUISES"
+  /** Aucun lot disponible : on refuse le tirage au lieu d'offrir une perte. */
+  | "AUCUN_LOT";
 
 /** Erreur métier destinée à être affichée au client (message en français). */
 export class ErreurMetier extends Error {
@@ -200,6 +293,15 @@ export function traduireErreur(e: unknown): ErreurMetier {
   }
   if (message.includes("CODE_UNIQUE")) {
     return new ErreurMetier("Impossible de générer un code, réessayez.", "CONFLIT");
+  }
+  if (message.includes("TOURS_EPUISES")) {
+    return new ErreurMetier(
+      "Vous avez déjà utilisé tous vos tours. Partagez à un ami pour en gagner un de plus !",
+      "TOURS_EPUISES",
+    );
+  }
+  if (message.includes("PARTICIPANT_BLOQUE")) {
+    return new ErreurMetier("Ce compte est bloqué.", "BLOQUE");
   }
   console.error("[db] erreur inattendue", e);
   return new ErreurMetier("Une erreur est survenue. Réessayez dans un instant.", "CONFLIT");

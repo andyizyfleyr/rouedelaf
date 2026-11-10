@@ -3,10 +3,12 @@
 import { AnimatePresence, motion } from "framer-motion";
 import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   CalendarClock,
   Check,
+  ChevronLeft,
+  ChevronRight,
   Copy,
   Gift,
   MapPin,
@@ -48,6 +50,7 @@ export function PopupResultat({
   boutique,
   ouvert,
   onFermer,
+  navigation,
 }: {
   tirage: TirageResultat;
   qrDataUrl: string | null;
@@ -55,9 +58,22 @@ export function PopupResultat({
   boutique: { nom: string; adresse: string; whatsapp: string };
   ouvert: boolean;
   onFermer: () => void;
+  /**
+   * Cadeaux précédent / suivant, quand le joueur en a gagné plusieurs.
+   * Absent si un seul gain : on n'affiche alors aucune flèche.
+   */
+  navigation?: { position: number; total: number; precedent: () => void; suivant: () => void };
 }) {
   const gagne = tirage.statut === "gagne";
+  const panneau = useRef<HTMLDivElement>(null);
   const [copie, setCopie] = useState(false);
+  /**
+   * QR de secours : le serveur ne prépare que celui du dernier gain. Si le
+   * joueur rouvre un cadeau PLUS ANCIEN, on le demande ici (une fois) pour
+   * qu'il puisse toujours se présenter en boutique.
+   */
+  const [qrSecours, setQrSecours] = useState<string | null>(null);
+  const qrAffiche = qrDataUrl ?? qrSecours;
   const [restant, setRestant] = useState<string | null>(null);
   const [expire, setExpire] = useState(false);
 
@@ -89,20 +105,67 @@ export function PopupResultat({
     }
   }, [ouvert, gagne, tirage.cadeau_nom]);
 
-  // Fermeture au clavier (Échap) et blocage du défilement de fond.
+  /**
+   * Ouverture : Échap ferme, le fond ne défile plus, ET le focus entre dans
+   * le dialogue. Sans ce dernier point, un utilisateur au clavier ou avec un
+   * lecteur d'écran restait sur <body> et ne savait pas qu'une fenêtre
+   * s'était ouverte (le contenu derrière restait annoncé).
+   */
   useEffect(() => {
     if (!ouvert) return;
     const surTouche = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onFermer();
+      if (e.key === "Escape") {
+        onFermer();
+        return;
+      }
+      // Piège à focus : Tab ne sort jamais du panneau.
+      if (e.key === "Tab" && panneau.current) {
+        const focusables = panneau.current.querySelectorAll<HTMLElement>(
+          'a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])',
+        );
+        if (focusables.length === 0) return;
+        const premier = focusables[0];
+        const dernier = focusables[focusables.length - 1];
+        if (e.shiftKey && document.activeElement === premier) {
+          e.preventDefault();
+          dernier.focus();
+        } else if (!e.shiftKey && document.activeElement === dernier) {
+          e.preventDefault();
+          premier.focus();
+        }
+      }
     };
     window.addEventListener("keydown", surTouche);
     const avant = document.body.style.overflow;
     document.body.style.overflow = "hidden";
+
+    const id = setTimeout(() => panneau.current?.focus(), 80);
     return () => {
+      clearTimeout(id);
       window.removeEventListener("keydown", surTouche);
       document.body.style.overflow = avant;
     };
   }, [ouvert, onFermer]);
+
+  useEffect(() => {
+    if (!ouvert || !gagne || !tirage.code_unique || qrDataUrl) return;
+    let annule = false;
+    (async () => {
+      try {
+        const res = await fetch(`/api/qr?code=${encodeURIComponent(tirage.code_unique ?? "")}`, {
+          cache: "force-cache",
+        });
+        if (!res.ok) return;
+        const data = await res.json();
+        if (!annule && typeof data.qrDataUrl === "string") setQrSecours(data.qrDataUrl);
+      } catch {
+        /* réseau instable : le code reste affichable/copiable */
+      }
+    })();
+    return () => {
+      annule = true;
+    };
+  }, [ouvert, gagne, tirage.code_unique, qrDataUrl]);
 
   async function copierCode() {
     if (!tirage.code_unique) return;
@@ -134,6 +197,8 @@ export function PopupResultat({
           />
 
           <motion.div
+            ref={panneau}
+            tabIndex={-1}
             role="dialog"
             aria-modal="true"
             aria-label={gagne ? "Votre cadeau" : "Votre résultat"}
@@ -141,7 +206,7 @@ export function PopupResultat({
             animate={{ y: 0, opacity: 1 }}
             exit={{ y: "100%", opacity: 0 }}
             transition={{ type: "spring", stiffness: 320, damping: 32 }}
-            className="carte-luxe relative z-10 max-h-[88dvh] w-full max-w-[480px] overflow-y-auto overscroll-contain rounded-b-none !p-4 sm:rounded-3xl"
+            className="carte-luxe popup-defilante relative z-10 max-h-[92dvh] w-full max-w-[480px] overflow-y-auto overscroll-contain rounded-b-none !p-4 sm:rounded-3xl"
           >
             {/* Poignée (indice de feuille glissante sur mobile) */}
             <div className="mx-auto mb-2 h-1 w-10 rounded-full bg-white/20 sm:hidden" />
@@ -154,6 +219,31 @@ export function PopupResultat({
             >
               <X className="size-4" />
             </button>
+
+            {/* Cadeau 1 / 2 : le joueur peut passer de l'un à l'autre */}
+            {navigation && navigation.total > 1 && (
+              <div className="mb-2 flex items-center justify-between gap-1 rounded-lg border border-or/20 bg-black/25 px-1 py-1">
+                <button
+                  type="button"
+                  aria-label="Cadeau précédent"
+                  onClick={navigation.precedent}
+                  className="grid size-7 place-items-center rounded text-cendre/70 hover:text-creme"
+                >
+                  <ChevronLeft className="size-4" />
+                </button>
+                <span className="text-[10px] tracking-[0.14em] text-or-clair/80 uppercase">
+                  Cadeau {navigation.position} / {navigation.total}
+                </span>
+                <button
+                  type="button"
+                  aria-label="Cadeau suivant"
+                  onClick={navigation.suivant}
+                  className="grid size-7 place-items-center rounded text-cendre/70 hover:text-creme"
+                >
+                  <ChevronRight className="size-4" />
+                </button>
+              </div>
+            )}
 
             {/* En-tête */}
             <div className="flex items-center gap-2.5 pr-9">
@@ -171,10 +261,14 @@ export function PopupResultat({
               </motion.div>
               <div className="min-w-0">
                 <h2 className="texte-or font-titre text-[1.3rem] leading-tight font-bold uppercase">
-                  {gagne ? "Vous avez gagné !" : "Pas de chance"}
+                  {gagne ? (expire ? "Bon expiré" : "Vous avez gagné !") : "Pas de chance"}
                 </h2>
                 <p className="mt-0.5 line-clamp-1 text-[11px] leading-snug text-cendre/80">
-                  {gagne ? "Montrez ce code en boutique." : messagePerdu}
+                  {gagne
+                    ? expire
+                      ? "Ce bon n'est plus valable en boutique."
+                      : "Montrez ce code en boutique."
+                    : messagePerdu}
                 </p>
               </div>
             </div>
@@ -222,7 +316,8 @@ export function PopupResultat({
                     <button
                       type="button"
                       onClick={copierCode}
-                      className="group flex w-full items-center justify-center gap-1.5 rounded-lg border border-or/35 bg-black/40 px-2 py-2 transition-colors hover:border-or/60"
+                      disabled={expire || tirage.recupere}
+                      className="group flex w-full items-center justify-center gap-1.5 rounded-lg border border-or/35 bg-black/40 px-2 py-2 transition-colors hover:border-or/60 disabled:cursor-not-allowed disabled:opacity-50"
                       aria-label="Copier mon code"
                     >
                       <span className="truncate font-mono text-[15px] font-bold tracking-[0.12em] text-or-clair">
@@ -235,16 +330,27 @@ export function PopupResultat({
                       )}
                     </button>
                     <p className="mt-0.5 text-center text-[9px] tracking-wide text-cendre/45 uppercase">
-                      {copie ? "Copié !" : "Appuyez pour copier"}
+                      {tirage.recupere
+                        ? "Déjà retiré"
+                        : expire
+                          ? "Expiré"
+                          : copie
+                            ? "Copié !"
+                            : "Appuyez pour copier"}
                     </p>
                   </div>
 
-                  {qrDataUrl && (
-                    <div className="shrink-0 rounded-lg border border-or/30 bg-or-clair p-1">
+                  {qrAffiche && (
+                    <div
+                      className={`shrink-0 rounded-lg border border-or/30 bg-or-clair p-1 ${
+                        expire || tirage.recupere ? "opacity-45 grayscale" : ""
+                      }`}
+                      title={expire || tirage.recupere ? "Bon non valable" : undefined}
+                    >
                       {/* Data-URL générée par le serveur : <img> volontaire */}
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img
-                        src={qrDataUrl}
+                        src={qrAffiche}
                         alt={`QR code du cadeau ${tirage.code_unique}`}
                         width={86}
                         height={86}

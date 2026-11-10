@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  CircleSlash,
   Coffee,
   CreditCard,
   Droplets,
@@ -10,7 +11,6 @@ import {
   PenLine,
   ShoppingBag,
   Shirt,
-  Sparkles,
   Ticket,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
@@ -26,7 +26,10 @@ import type { LucideIcon } from "lucide-react";
  * L'emoji reste utilisé sur les écrans admin, où il sert de repère.
  */
 const REGLES: { motif: RegExp; icone: LucideIcon }[] = [
-  { motif: /perdu|rien|dommage/i, icone: Sparkles },
+  // « Perdu » doit se lire immédiatement comme « pas de cadeau ». Une étoile
+  // dorée (ancienne icône) ressemblait à un cadeau et donnait l'impression
+  // d'une roue pleine de lots.
+  { motif: /perdu|rien|dommage/i, icone: CircleSlash },
   { motif: /achat|bon|ch[eè]que|credit|crédit|carte/i, icone: CreditCard },
   { motif: /casquette|chapeau|t-shirt|textile|v[eê]tement/i, icone: Shirt },
   { motif: /sac|courses|panier/i, icone: ShoppingBag },

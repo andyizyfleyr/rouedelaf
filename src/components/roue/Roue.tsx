@@ -61,6 +61,13 @@ export type RoueProps = {
    * droite et les textes celle de gauche.
    */
   pleinEcran?: boolean;
+  /**
+   * Angle d'arrêt déjà connu (reprise après rechargement) : la roue s'affiche
+   * immédiatement sur la bonne case au lieu de repartir de zéro. Sans cela,
+   * un joueur qui rechargeait pendant la rotation voyait une roue neuve et
+   * ne comprenait pas que son tour était déjà consommé.
+   */
+  angleInitial?: number | null;
   className?: string;
 };
 
@@ -86,16 +93,27 @@ export function Roue({
   onFin,
   taille,
   pleinEcran = false,
+  angleInitial = null,
   className,
 }: RoueProps) {
-  const rotation = useMotionValue(0);
+  /**
+   * Rotation initiale : si un angle d'arrêt est fourni (tirage déjà joué), on
+   * démarre dessus. `useState` fige la valeur au montage : Framer Motion ne
+   * réinitialise pas la valeur entre deux rendus.
+   */
+  const rotation = useMotionValue(angleInitial ?? 0);
   const [enMouvement, setEnMouvement] = useState(false);
   /** Index actuellement sous le doigt (retour visuel pendant la rotation). */
-  const [indexDoigt, setIndexDoigt] = useState<number | null>(null);
+  const [indexDoigt, setIndexDoigt] = useState<number | null>(() => {
+    if (angleInitial === null || cases.length === 0) return null;
+    const secteur = 360 / cases.length;
+    const normalise = ((-(angleInitial % 360)) + 360) % 360;
+    return Math.floor(normalise / secteur) % cases.length;
+  });
   /** Incrémenté à chaque cloison franchie : fait claquer l'aiguille. */
   const [claquer, setClaquer] = useState(0);
   const animationRef = useRef<ReturnType<typeof animate> | null>(null);
-  const rotationRef = useRef(0);
+  const rotationRef = useRef(angleInitial ?? 0);
   /** Horodatage de la dernière cloison franchie (rythme des claquements). */
   const tickRef = useRef(0);
   /** Décalage angulaire tiré au sort à chaque tour (voir angleCible). */

@@ -20,7 +20,6 @@ import {
 } from "@/lib/session";
 import { lireParametres } from "@/server/params";
 import { empreinteAppareil, hasherIp, lireIp } from "@/server/contexte";
-import { assurerSchema } from "@/server/init";
 
 /**
  * POST /api/inscription
@@ -84,10 +83,6 @@ export async function POST(request: Request) {
   }
 
   try {
-    // Première visite sur une base neuve : on crée le schéma à la volée plutôt
-    // que de renvoyer une erreur 500 au client (voir src/server/init.ts).
-    await assurerSchema();
-
     const existant = await participantParTelephone(telephone);
     if (existant) {
       if (existant.bloque) {

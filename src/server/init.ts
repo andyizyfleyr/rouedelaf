@@ -5,8 +5,6 @@ import path from "node:path";
 
 import { Client } from "pg";
 
-import { sql } from "@/lib/db";
-
 /**
  * Initialisation de la base depuis l'application (donc depuis Vercel).
  *
@@ -30,37 +28,6 @@ import { sql } from "@/lib/db";
  *  • Le SQL est idempotent (CREATE TABLE IF NOT EXISTS / ON CONFLICT) : une
  *    seconde exécution ne casse rien.
  */
-
-/**
- * Vérifie que le schéma est en place ; sinon l'applique.
- *
- * Appelée par /api/inscription et /api/tirage AVANT d'écrire : si la base est
- * neuve (cas d'un premier déploiement), les tables sont créées à la volée au
- * lieu de laisser le client devant une erreur 500. Le travail est fait une
- * seule fois puis mémorisé par processus, donc le coût est nul ensuite.
- */
-let promesseSchema: Promise<void> | null = null;
-let schemaVerifie = false;
-
-export async function assurerSchema(): Promise<void> {
-  if (schemaVerifie) return;
-  if (!promesseSchema) {
-    promesseSchema = (async () => {
-      const lignes = await sql`SELECT to_regclass('public.parametres') AS t`;
-      const existe = Boolean((lignes[0] as { t?: string } | undefined)?.t);
-      if (!existe) {
-        console.warn("[init] base vide détectée : création du schéma…");
-        await initialiserBase({ forcer: false });
-      }
-      schemaVerifie = true;
-    })().catch((e) => {
-      // On ne mémorise pas l'échec : la prochaine requête réessaiera.
-      promesseSchema = null;
-      throw e;
-    });
-  }
-  await promesseSchema;
-}
 
 export type ResultatInit = {
   ok: boolean;

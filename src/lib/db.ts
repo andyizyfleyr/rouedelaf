@@ -95,6 +95,61 @@ function construireRequete(
   return { texte, parametres: valeurs };
 }
 
+/** Exécute une requête SANS passer par la vérification de schéma. */
+async function executerBrut(texte: string, parametres: unknown[]): Promise<Ligne[]> {
+  if (neonHttp) {
+    // Le driver HTTP attend des paramètres sérialisables.
+    return (await neonHttp.query(texte, parametres as never)) as Ligne[];
+  }
+
+  const pool = obtenirPool();
+  const resultat = await pool.query(texte, parametres);
+  return resultat.rows as Ligne[];
+}
+
+/* -------------------------------------------------------------------------- */
+/*  Schéma auto-créé                                                           */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Sur un déploiement neuf, la base fournie par le client peut être vide : les
+ * tables n'existent pas encore et la moindre lecture échoue. Plutôt que
+ * d'afficher « Une erreur inattendue s'est produite » au premier visiteur (ou
+ * au staff qui ouvre /admin), on crée le schéma à la première requête.
+ *
+ * Le test coûte un aller-retour par processus (ensuite mémorisé), et un échec
+ * n'est jamais bloquant : la requête appelante garde la main sur son erreur.
+ */
+let schemaPret = false;
+let verificationEnCours: Promise<void> | null = null;
+
+async function verifierSchema(): Promise<void> {
+  if (schemaPret) return;
+  if (!verificationEnCours) {
+    verificationEnCours = (async () => {
+      try {
+        const lignes = await executerBrut("SELECT to_regclass('public.parametres') AS t", []);
+        const existe = Boolean((lignes[0] as { t?: string } | undefined)?.t);
+        if (!existe) {
+          console.warn("[db] base vide détectée : création du schéma…");
+          // Import paresseux : init.ts dépend de ce module, on casse le cycle.
+          const { initialiserBase } = await import("@/server/init");
+          await initialiserBase({ forcer: false });
+          console.warn("[db] schéma créé.");
+        }
+        schemaPret = true;
+      } catch (e) {
+        // Base injoignable ou droits insuffisants : on ne masque rien, mais on
+        // ne bloque pas la requête. La prochaine tentative réessaiera.
+        console.warn("[db] vérification du schéma impossible", e);
+      } finally {
+        verificationEnCours = null;
+      }
+    })();
+  }
+  await verificationEnCours;
+}
+
 /**
  * Exécute une requête paramétrée et renvoie les lignes.
  *
@@ -105,15 +160,8 @@ export async function sql(
   ...valeurs: unknown[]
 ): Promise<Ligne[]> {
   const { texte, parametres } = construireRequete(morceaux, valeurs);
-
-  if (neonHttp) {
-    // Le driver HTTP attend des paramètres sérialisables.
-    return (await neonHttp.query(texte, parametres as never)) as Ligne[];
-  }
-
-  const pool = obtenirPool();
-  const resultat = await pool.query(texte, parametres);
-  return resultat.rows as Ligne[];
+  await verifierSchema();
+  return executerBrut(texte, parametres);
 }
 
 /* -------------------------------------------------------------------------- */

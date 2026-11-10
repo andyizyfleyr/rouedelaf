@@ -4,7 +4,6 @@ import { ErreurMetier, traduireErreur } from "@/lib/db";
 import { verifierLimite, prendreVerrou, libererVerrou } from "@/lib/rate-limit";
 import { lireSessionJeu } from "@/lib/session";
 import { empreinteAppareil, hasherIp, lireIp } from "@/server/contexte";
-import { assurerSchema } from "@/server/init";
 import { effectuerTirage } from "@/server/tirage";
 
 /**
@@ -55,10 +54,6 @@ export async function POST(request: Request) {
   }
 
   try {
-    // Filet de sécurité : si la base a été réinitialisée entre l'inscription et
-    // le tirage, le schéma est recréé au lieu d'échouer en 500.
-    await assurerSchema();
-
     const resultat = await effectuerTirage(session.participantId, {
       appareil,
       ipHash,

@@ -89,22 +89,6 @@ export function FormulaireReglages({
               max={100}
               aide="Offert aux perdants"
             />
-            <Champ
-              name="otpTentativesMax"
-              libelle="Essais OTP maximum"
-              valeur={parametres.otpTentativesMax}
-              min={1}
-              max={10}
-              aide="Sécurité du code WhatsApp"
-            />
-            <Champ
-              name="otpValiditeMinutes"
-              libelle="Validité du code OTP (min)"
-              valeur={parametres.otpValiditeMinutes}
-              min={1}
-              max={60}
-              aide="Durée du code à 6 chiffres"
-            />
           </div>
 
           <div>

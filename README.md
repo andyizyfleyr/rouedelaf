@@ -1,8 +1,8 @@
 # 🎡 Roue de la Fortune — Boutique Bénin
 
 Application marketing complète pour boutique physique : le client scanne un QR code,
-tourne la roue, gagne un cadeau, et vous récupérez **son numéro WhatsApp** vérifié
-pour vos campagnes.
+tourne la roue, gagne un cadeau, et vous récupérez **son numéro WhatsApp** (avec
+son consentement) pour vos campagnes.
 
 **Stack** : Next.js 16 (App Router) · TypeScript · Tailwind CSS v4 · Framer Motion ·
 Howler.js · canvas-confetti · Neon (Postgres) · Upstash Redis · Recharts · qrcode ·
@@ -16,8 +16,7 @@ PWA · Vercel.
 
 | Page | Rôle |
 |------|------|
-| `/jouer` | Arrivée par QR code / lien. Nom + numéro WhatsApp + consentement. Source trackée (`?src=facebook`, `?src=tiktok`, `?src=boutique`…). Code de parrainage possible (`?ref=RX8K2M`). |
-| *(OTP)* | Code à 6 chiffres envoyé **par WhatsApp**. Une seule participation par numéro. |
+| `/jouer` | Arrivée par QR code / lien. Nom + numéro WhatsApp + consentement, **en un seul écran** : la session s'ouvre immédiatement et la roue s'affiche. Source trackée (`?src=facebook`, `?src=tiktok`, `?src=boutique`…). Code de parrainage possible (`?ref=RX8K2M`). |
 | `/roue` | La roue SVG tourne, ralentit, l'aiguille rebondit à chaque case. **Le résultat est décidé avant l'animation, côté serveur.** |
 | `/resultat` | Gagné : cadeau + code unique + QR code + date limite. Perdu : message bienveillant + bon de réduction de consolation. Bouton « partager à un ami = 1 tour en plus ». |
 | `/borne` | **Mode borne** : très grand QR code pour la tablette en boutique + bandeau des derniers gagnants. |
@@ -73,9 +72,10 @@ npm run dev             # → http://localhost:3000
 - Admin : http://localhost:3000/connexion (mot de passe = `ADMIN_PASSWORD`)
 - Borne : http://localhost:3000/borne
 
-> 💡 **Sans WhatsApp configuré**, le driver `console` affiche le code OTP dans le
-> terminal et sur l'écran de saisie (développement uniquement). Aucun compte
-> WhatsApp Business n'est nécessaire pour tester.
+> 💡 **Aucun compte WhatsApp Business n'est nécessaire.** Le jeu envoie
+> désormais zéro message : le client saisit son numéro, vérifie qu'il est juste
+> à l'écran, et joue. Une seule participation par numéro (contrainte unique en
+> base). Les numéros collectés servent à vos campagnes WhatsApp, hors application.
 
 ### Commandes utiles
 
@@ -166,39 +166,36 @@ Next.js automatiquement (aucun réglage de build à changer).
 | `DATABASE_URL` | ✅ | `postgresql://…-pooler…neon.tech/roue?sslmode=require` |
 | `ADMIN_PASSWORD` | ✅ | mot de passe long et unique de la boutique |
 | `ADMIN_SESSION_SECRET` | ✅ | `openssl rand -base64 48` |
-| `OTP_PEPPER` | ✅ | un autre `openssl rand -base64 48` |
+| `OTP_PEPPER` | ✅ | un autre `openssl rand -base64 48` (sel des empreintes IP/appareil) |
 | `NEXT_PUBLIC_APP_URL` | ✅ | `https://roue.maboutique.bj` |
 | `NEXT_PUBLIC_BOUTIQUE_NOM` | ✅ | `Élégance Cotonou` |
 | `NEXT_PUBLIC_BOUTIQUE_ADRESSE` | ✅ | `Boulevard Saint-Michel, Cotonou` |
 | `NEXT_PUBLIC_BOUTIQUE_WHATSAPP` | ✅ | `+22997123456` |
 | `UPSTASH_REDIS_REST_URL` | recommandé | `https://xxx.upstash.io` |
 | `UPSTASH_REDIS_REST_TOKEN` | recommandé | `AX…` |
-| `WHATSAPP_DRIVER` | ✅ | `meta` en production |
-| `WHATSAPP_META_TOKEN` / `WHATSAPP_META_PHONE_ID` | si driver `meta` | |
-| `WHATSAPP_META_TEMPLATE` | si modèle approuvé | `code_connexion` |
 | `NEXT_PUBLIC_META_PIXEL_ID` | facultatif | `1234567890` |
 | `NEXT_PUBLIC_TIKTOK_PIXEL_ID` | facultatif | `C4XXXX` |
 
 > ⚠️ `NEXT_PUBLIC_*` est visible dans le navigateur : n'y mettez **jamais** de secret.
 
-### e) WhatsApp : envoyer les vrais codes
+### e) Envoi de messages WhatsApp — non requis
 
-Deux options, choisies par `WHATSAPP_DRIVER` :
+L'application **n'envoie aucun message**. L'ancienne vérification du numéro par
+code à 6 chiffres a été retirée : elle ajoutait de la friction en boutique pour
+un gain nul dès lors qu'aucun envoi réel n'était configuré.
 
-**Meta WhatsApp Cloud API** (recommandé au Bénin)
-1. [developers.facebook.com](https://developers.facebook.com) → créez une app
-   Business, ajoutez le produit **WhatsApp**.
-2. Récupérez le *Phone number ID* et un *token permanent* (System User).
-3. Créez un **modèle (template) d'authentification** nommé `code_connexion`
-   (langue `fr`) avec le code en variable `{{1}}`, faites-le approuver, puis
-   renseignez `WHATSAPP_META_TEMPLATE=code_connexion`.
-4. Testez avec votre propre numéro avant la mise en service.
+Ce qui protège toujours le jeu :
 
-**Twilio WhatsApp** : `WHATSAPP_DRIVER=twilio` + `TWILIO_ACCOUNT_SID`,
-`TWILIO_AUTH_TOKEN`, `TWILIO_WHATSAPP_FROM`.
+- **une participation par numéro**, garantie par la contrainte `UNIQUE` sur
+  `participants.telephone` — et non plus par un code ;
+- la **relecture du numéro complet** à l'écran avant validation (le « 2 tours »
+  du téléphone est la première source d'erreur) ;
+- **5 inscriptions / 10 min / IP** (Upstash) et l'empreinte d'appareil ;
+- si quelqu'un saisit le numéro d'un autre joueur, le numéro étant déjà
+  inscrit, l'API répond « déjà participé » et n'ouvre aucune session.
 
-> Oubliez de configurer WhatsApp en production ? Le jeu échoue proprement avec un
-> message clair, et aucun code n'est affiché au client.
+Pour vos campagnes, exportez les numéros depuis `/admin/joueurs` et écrivez-leur
+depuis WhatsApp Business (l'application, elle, reste silencieuse).
 
 ### f) Après le déploiement
 
@@ -230,7 +227,7 @@ Deux options, choisies par `WHATSAPP_DRIVER` :
 ├── src/
 │   ├── app/
 │   │   ├── (client)/           # Parcours public
-│   │   │   ├── jouer/          # Inscription + OTP
+│   │   │   ├── jouer/          # Inscription (un seul écran)
 │   │   │   ├── roue/           # La roue
 │   │   │   ├── resultat/       # Résultat + QR
 │   │   │   └── hors-ligne/
@@ -243,7 +240,7 @@ Deux options, choisies par `WHATSAPP_DRIVER` :
 │   │   │   ├── qr/             # QR à imprimer
 │   │   │   └── reglages/       # Paramètres + journal
 │   │   ├── connexion/          # Connexion admin
-│   │   ├── api/                # Route Handlers (tirage, OTP, exports…)
+│   │   ├── api/                # Route Handlers (inscription, tirage, exports…)
 │   │   ├── globals.css         # Design system « casino de luxe »
 │   │   ├── layout.tsx          # Layout racine (PWA, pixels)
 │   │   └── manifest.ts         # Manifeste PWA
@@ -260,7 +257,6 @@ Deux options, choisies par `WHATSAPP_DRIVER` :
 │   │   ├── tirage-serveur.ts   # Sélection crypto.randomInt
 │   │   ├── session.ts          # Cookies signés (jeu + admin)
 │   │   ├── rate-limit.ts       # Upstash Redis
-│   │   ├── otp.ts / whatsapp.ts
 │   │   ├── sons.ts / confettis.ts / pixel.ts
 │   │   └── format.ts / types.ts / env.ts / cn.ts / appareil.ts
 │   └── server/                 # Strictement serveur ("server-only")
@@ -286,10 +282,10 @@ Deux options, choisies par `WHATSAPP_DRIVER` :
 |--------|--------|
 | **Triche côté navigateur** | Le tirage est fait uniquement dans `POST /api/tirage`, avec `crypto.randomInt` (jamais `Math.random`). Le navigateur reçoit seulement l'**index de la case** où s'arrêter. |
 | **Double participation** | Contrainte `UNIQUE` sur `participants.telephone` + limite de tours calculée en base. |
-| **Spam / robots** | Upstash Redis : 5 inscriptions / 10 min / IP, 5 envois OTP / 15 min, 12 tirages / 10 min, 20 essais de connexion admin. Verrou anti double-clic de 15 s par participant. |
+| **Spam / robots** | Upstash Redis : 5 inscriptions / 10 min / IP, 12 tirages / 10 min, 20 essais de connexion admin. Verrou anti double-clic de 15 s par participant. |
 | **Deux joueurs sur le dernier lot** | Fonction SQL `enregistrer_tirage` : `SELECT … FOR UPDATE` puis décrément de stock. Testé : 8 tirages simultanés sur 3 stocks → exactement 3 succès, stock final 0, jamais négatif. |
 | **Code cadeau réutilisé** | `UPDATE … WHERE recupere = false` : la seconde validation est refusée. Code expirant automatiquement. |
-| **OTP deviné** | 6 chiffres, hachés (SHA-256 + poivre), 5 essais max, validité 10 min, comparaison en temps constant. |
+| **Numéro volé** | Impossible de consommer le tour d'un autre : le numéro est unique en base, donc une seconde inscription sur ce numéro renvoie « déjà participé » sans ouvrir de session. |
 | **Accès admin** | Cookie `httpOnly` signé (JWT HS256), contrôle serveur dans `src/app/admin/layout.tsx` **et** dans chaque Server Action (`exigerAdmin()`). |
 | **Fuite de données** | RLS activé sur toutes les tables sans politique publique. Aucune clé base côté navigateur. Les numéros ne sont jamais exposés par les API publiques (`/api/borne` n'envoie que « Adjoa S. »). |
 | **Injection SQL** | 100 % de requêtes paramétrées (`sql\`… ${valeur} …\``). |
@@ -348,7 +344,8 @@ Deux options, choisies par `WHATSAPP_DRIVER` :
   Realtime (Supabase Realtime, Ably, Pusher) : seul `src/components/admin/EcranBoutique.tsx`
   est à modifier.
 - **Notifications WhatsApp de rappel** (« votre cadeau expire dans 3 jours ») :
-  utilisez `src/lib/whatsapp.ts` + un Cron Vercel.
+  exportez les numéros puis utilisez l'API WhatsApp Business, ou un Cron Vercel
+  qui appelle un service d'envoi de votre choix.
 - **Multi-boutiques** : ajoutez une colonne `boutique_id` — l'architecture
   (`src/server/*`) est déjà centralisée.
 
@@ -360,7 +357,6 @@ Deux options, choisies par `WHATSAPP_DRIVER` :
 |----------|----------------|----------|
 | `Variable d'environnement manquante : …` | `.env.local` incomplet | copiez `.env.example` et remplissez |
 | `DATABASE_URL absente` au démarrage | pas de `.env.local` | idem |
-| Le code OTP n'arrive pas | driver `console` ou template non approuvé | `WHATSAPP_DRIVER=meta` + modèle approuvé |
 | « Trop de tentatives depuis cet appareil » | limite Upstash atteinte | attendez 10–15 min, ou videz la base Redis Upstash |
 | La page admin renvoie vers `/connexion` | cookie expiré (12 h) | reconnectez-vous |
 | `ECONNRESET` en local avec PGlite | plus d'une connexion TCP | relancez `scripts/pg-local.mjs` (maxConnections = 16) |

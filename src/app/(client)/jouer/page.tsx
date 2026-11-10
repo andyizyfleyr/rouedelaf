@@ -48,8 +48,8 @@ async function Contenu() {
           Tournez la roue
         </h1>
         <p className="mx-auto mt-3 max-w-[38ch] text-sm leading-relaxed text-cendre">
-          Entrez votre nom et votre numéro WhatsApp pour recevoir votre code, puis tentez de
-          gagner un cadeau à retirer chez <strong className="text-creme">{boutique.nom}</strong>.
+          Entrez votre nom et votre numéro WhatsApp, puis tentez de gagner un
+          cadeau à retirer chez <strong className="text-creme">{boutique.nom}</strong>.
         </p>
       </header>
 

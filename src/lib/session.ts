@@ -11,7 +11,7 @@ import { env } from "./env";
  * Sessions signées (JWT courte durée) stockées dans un cookie httpOnly.
  *
  * Deux sessions distinctes :
- *  - « roue_session »  : session de JEU du client (participant vérifié par OTP)
+ *  - « roue_session »  : session de JEU du client (participant inscrit)
  *  - « roue_admin »    : session de l'ADMIN (mot de passe partagé boutique)
  *
  * Le JWT est signé avec ADMIN_SESSION_SECRET : impossible à forger côté client.

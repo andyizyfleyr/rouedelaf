@@ -17,8 +17,8 @@ export const instant = false;
  *
  * Écran d'accueil plein cadre destiné à une tablette ou une TV :
  *  - un très grand QR code : le client le scanne et joue sur SON téléphone
- *    (numéro WhatsApp personnel, OTP personnel — indispensable pour le
- *    consentement marketing) ;
+ *    (son propre numéro WhatsApp et son propre consentement — la tablette
+ *    ne collecte rien) ;
  *  - un bandeau des derniers gagnants qui tourne en boucle pour créer
  *    l'envie ;
  *  - aucune interaction avec la tablette : elle ne collecte aucune donnée.

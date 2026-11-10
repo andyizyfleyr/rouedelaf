@@ -41,7 +41,7 @@ export type ResultatTirageApi = {
   reductionConsolation: number | null;
 };
 
-/** Session de jeu renvoyée au client après vérification OTP. */
+/** Session de jeu renvoyée au client après son inscription. */
 export type SessionJeu = {
   participantId: number;
   nom: string;

@@ -35,13 +35,11 @@ function client(): Redis | null {
   return redis;
 }
 
-type Fenetre = "test" | "inscription" | "otp-envoi" | "otp-verif" | "tirage" | "scan" | "admin";
+type Fenetre = "test" | "inscription" | "tirage" | "scan" | "admin";
 
 const CONFIGS: Record<Fenetre, { requetes: number; duree: `${number} s` | `${number} m` | `${number} h` }> = {
   test: { requetes: 60, duree: "1 m" },
   inscription: { requetes: 5, duree: "10 m" }, // 5 inscriptions / 10 min / IP
-  "otp-envoi": { requetes: 5, duree: "15 m" }, // 5 SMS / 15 min / IP
-  "otp-verif": { requetes: 10, duree: "15 m" }, // 10 essais de code / 15 min / IP
   tirage: { requetes: 12, duree: "10 m" }, // 12 tirages / 10 min / IP (tours bonus inclus)
   scan: { requetes: 120, duree: "1 m" }, // scans admin : généreux
   admin: { requetes: 20, duree: "15 m" }, // tentatives de mot de passe
@@ -121,5 +119,88 @@ export async function libererVerrou(cle: string): Promise<void> {
     await r.del(`roue:lock:${cle}`);
   } catch {
     /* silencieux */
+  }
+}
+
+
+/* -------------------------------------------------------------------------- */
+/*  Diagnostic                                                                 */
+/* -------------------------------------------------------------------------- */
+
+/** Upstash est-il configuré ? (sert à /api/admin/diagnostic et aux journaux) */
+export function limitationActive(): boolean {
+  return env.upstash !== null;
+}
+
+/**
+ * Vérifie que l'anti-abus est réellement opérationnel, sans consommer le quota
+ * d'une vraie fenêtre : on utilise une fenêtre dédiée et une clé unique.
+ *
+ * Renvoie un compte rendu lisible plutôt qu'un simple booléen : en cas de
+ * panne, l'admin doit savoir s'il s'agit d'une variable absente, d'un jeton
+ * révoqué ou d'un réseau bloqué.
+ */
+export async function verifierAntiAbus(): Promise<{
+  configure: boolean;
+  operationnel: boolean;
+  message: string;
+  variables: { url: boolean; token: boolean };
+}> {
+  const url = Boolean(process.env.UPSTASH_REDIS_REST_URL || process.env.KV_REST_API_URL);
+  const token = Boolean(
+    process.env.UPSTASH_REDIS_REST_TOKEN || process.env.KV_REST_API_TOKEN,
+  );
+  const variables = { url, token };
+
+  if (!url || !token) {
+    return {
+      configure: false,
+      operationnel: false,
+      variables,
+      message:
+        "Upstash non configuré : la limitation par IP/appareil est DÉSACTIVÉE. Ajoutez UPSTASH_REDIS_REST_URL et UPSTASH_REDIS_REST_TOKEN dans Vercel, puis redéployez.",
+    };
+  }
+
+  const r = client();
+  if (!r) {
+    return {
+      configure: true,
+      operationnel: false,
+      variables,
+      message: "Variables présentes mais client non initialisé.",
+    };
+  }
+
+  try {
+    // Écriture éphémère : prouve l'authentification ET la connectivité.
+    const cle = `roue:diagnostic:${Date.now()}`;
+    await r.set(cle, "ok", { ex: 30 });
+    const valeur = await r.get(cle);
+    await r.del(cle);
+
+    if (valeur !== "ok") {
+      return {
+        configure: true,
+        operationnel: false,
+        variables,
+        message: "Écriture acceptée mais relecture différente : vérifiez la base Upstash.",
+      };
+    }
+
+    return {
+      configure: true,
+      operationnel: true,
+      variables,
+      message: "Anti-abus actif : les limites par IP et par appareil sont appliquées.",
+    };
+  } catch (e) {
+    const detail = e instanceof Error ? e.message : String(e);
+    return {
+      configure: true,
+      operationnel: false,
+      variables,
+      message: `Upstash injoignable ou jeton invalide : ${detail.slice(0, 160)}`,
+    };
   }
 }

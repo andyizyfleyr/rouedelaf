@@ -8,10 +8,16 @@ import { normaliserSource, normaliserTelephone, formaterTelephone } from "@/lib/
 import { verifierLimite } from "@/lib/rate-limit";
 import {
   creerParticipant,
+  creerSessionEnBase,
   crediterParrainage,
   participantParCodeParrain,
   participantParTelephone,
 } from "@/server/data";
+import {
+  creerSessionJeu,
+  hacherToken,
+  nouveauTokenSession,
+} from "@/lib/session";
 import { lireParametres } from "@/server/params";
 import { empreinteAppareil, hasherIp, lireIp } from "@/server/contexte";
 
@@ -21,8 +27,11 @@ import { empreinteAppareil, hasherIp, lireIp } from "@/server/contexte";
  * Étape 1 du jeu : le client saisit son nom + son numéro WhatsApp.
  *
  * - Le numéro est normalisé (229XXXXXXXX).
- * - Un numéro déjà inscrit n'obtient PAS de nouveau code : on lui renvoie le
- *   message « déjà participé » (1 participation par numéro).
+ * - Un numéro déjà inscrit n'obtient PAS une seconde participation : on lui
+ *   renvoie le message « déjà participé » (1 participation par numéro).
+ * - En cas de succès, la session de jeu est ouverte ICI (cookie signé + ligne
+ *   en base). Il n'y a plus de code de vérification par WhatsApp : l'inscription
+ *   débouche directement sur la roue.
  * - Limitation par IP (5 inscriptions / 10 min) et empreinte d'appareil.
  */
 const schema = z.object({
@@ -116,6 +125,22 @@ export async function POST(request: Request) {
         );
       }
     }
+
+    // Session ouverte immédiatement : plus d'étape de vérification par code.
+    // On garde la ligne en base pour que l'admin puisse révoquer une session.
+    const sid = nouveauTokenSession();
+    const expireLe = new Date(Date.now() + 4 * 60 * 60 * 1000);
+    await creerSessionEnBase({
+      participantId: participant.id,
+      tokenHash: hacherToken(sid),
+      expireLe,
+    });
+    await creerSessionJeu({
+      participantId: participant.id,
+      nom: participant.nom,
+      telephone: participant.telephone,
+      sid,
+    });
 
     return NextResponse.json({
       ok: true,

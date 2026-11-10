@@ -140,19 +140,12 @@ CREATE TABLE IF NOT EXISTS parrainages (
 );
 
 -- ----------------------------------------------------------------------------
--- 6. CODES OTP (vérification du numéro WhatsApp)
---    Le code est stocké HACHÉ (blake2b avec OTP_PEPPER) : jamais en clair.
+-- 6. (ancien emplacement des codes OTP — fonctionnalité retirée)
+--    La vérification du numéro par code WhatsApp a été supprimée : l'étape
+--    n'apportait rien sans envoi réel et ajoutait de la friction en boutique.
+--    La contrainte d'unicité sur participants.telephone assure toujours
+--    « une participation par numéro ».
 -- ----------------------------------------------------------------------------
-CREATE TABLE IF NOT EXISTS otp_codes (
-  id          bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-  telephone   text NOT NULL,
-  code_hash   text NOT NULL,
-  tentatives  integer NOT NULL DEFAULT 0,
-  expire_le   timestamptz NOT NULL,
-  utilise     boolean NOT NULL DEFAULT false,
-  created_at  timestamptz NOT NULL DEFAULT now(),
-  CONSTRAINT otp_tentatives_max CHECK (tentatives BETWEEN 0 AND 10)
-);
 
 -- ----------------------------------------------------------------------------
 -- 7. SESSIONS DE JEU (liaison participant ↔ navigateur, signée par cookie)
@@ -199,10 +192,6 @@ CREATE INDEX IF NOT EXISTS tirages_expire_idx ON tirages (expire_le) WHERE statu
 CREATE INDEX IF NOT EXISTS tirages_non_recuperes_idx ON tirages (cadeau_id) WHERE statut = 'gagne' AND NOT recupere;
 -- Classement des gagnants récents pour l'écran boutique (Realtime).
 CREATE INDEX IF NOT EXISTS tirages_gagnants_recents_idx ON tirages (created_at DESC) WHERE statut = 'gagne';
-
--- OTP : recherche du dernier code valide pour un numéro.
-CREATE INDEX IF NOT EXISTS otp_telephone_idx ON otp_codes (telephone, created_at DESC);
-CREATE INDEX IF NOT EXISTS otp_purge_idx ON otp_codes (expire_le);
 
 -- Sessions : lookup par token haché.
 CREATE INDEX IF NOT EXISTS sessions_token_idx ON sessions_jeu (token_hash);
@@ -410,7 +399,7 @@ DECLARE
   t text;
   tables text[] := ARRAY[
     'parametres', 'participants', 'cadeaux', 'tirages',
-    'parrainages', 'otp_codes', 'sessions_jeu', 'journal_admin'
+    'parrainages', 'sessions_jeu', 'journal_admin'
   ];
 BEGIN
   FOREACH t IN ARRAY tables LOOP
@@ -427,7 +416,7 @@ DECLARE
   t text;
   tables text[] := ARRAY[
     'parametres', 'participants', 'cadeaux', 'tirages',
-    'parrainages', 'otp_codes', 'sessions_jeu', 'journal_admin'
+    'parrainages', 'sessions_jeu', 'journal_admin'
   ];
 BEGIN
   FOREACH t IN ARRAY tables LOOP
@@ -465,10 +454,17 @@ INSERT INTO parametres (cle, valeur, description) VALUES
   ('active_jeu',                'true','Interrupteur général du jeu (true/false)'),
   ('message_perdu',             'Pas de chance cette fois ! Voici un bon de réduction pour votre prochaine visite.', 'Message affiché aux perdants'),
   ('reduction_consolation',     '10', 'Pourcentage de réduction offert aux perdants'),
-  ('otp_tentatives_max',        '5',  'Nombre d''essais OTP autorisés'),
-  ('otp_validite_minutes',      '10', 'Durée de validité d''un code OTP (minutes)'),
   ('tours_bonus_parrainage',    '1',  'Tours bonus accordés quand un ami inscrit avec votre lien')
 ON CONFLICT (cle) DO NOTHING;
+
+-- ============================================================================
+--  MIGRATION : retrait de la vérification OTP
+--  Les bases créées avant la suppression portent encore la table et les deux
+--  réglages associés. On les retire ici pour que `npm run db:setup` remette
+--  n'importe quelle base dans l'état attendu.
+-- ============================================================================
+DROP TABLE IF EXISTS otp_codes;
+DELETE FROM parametres WHERE cle IN ('otp_tentatives_max', 'otp_validite_minutes');
 
 COMMIT;
 

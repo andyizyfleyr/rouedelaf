@@ -11,7 +11,7 @@ import { env } from "@/lib/env";
  * hash salé, suffisant pour détecter les abus et faire des statistiques.
  */
 
-const sel = () => `${env.otpPepper}:contexte`;
+const sel = () => `${env.selEmpreintes}:contexte`;
 
 /** Extrait l'IP réelle derrière le proxy Vercel. */
 export function lireIp(request: Request): string {

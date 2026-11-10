@@ -15,8 +15,6 @@ export type Parametres = {
   activeJeu: boolean;
   messagePerdu: string;
   reductionConsolation: number;
-  otpTentativesMax: number;
-  otpValiditeMinutes: number;
   toursBonusParrainage: number;
 };
 
@@ -28,8 +26,6 @@ const DEFAUTS: Parametres = {
   messagePerdu:
     "Pas de chance cette fois ! Voici un bon de réduction pour votre prochaine visite.",
   reductionConsolation: 10,
-  otpTentativesMax: 5,
-  otpValiditeMinutes: 10,
   toursBonusParrainage: 1,
 };
 
@@ -67,8 +63,6 @@ export async function lireParametres(): Promise<Parametres> {
       activeJeu: booleen("active_jeu", DEFAUTS.activeJeu),
       messagePerdu: map.get("message_perdu") ?? DEFAUTS.messagePerdu,
       reductionConsolation: nombre("reduction_consolation", DEFAUTS.reductionConsolation),
-      otpTentativesMax: nombre("otp_tentatives_max", DEFAUTS.otpTentativesMax),
-      otpValiditeMinutes: nombre("otp_validite_minutes", DEFAUTS.otpValiditeMinutes),
       toursBonusParrainage: nombre("tours_bonus_parrainage", DEFAUTS.toursBonusParrainage),
     };
 

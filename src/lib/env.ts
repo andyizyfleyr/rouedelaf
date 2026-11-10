@@ -30,22 +30,34 @@ export const env = {
   get adminPassword() {
     return requis("ADMIN_PASSWORD");
   },
-  get otpPepper() {
+  /**
+   * Sel de hachage des empreintes (IP, appareil) et des jetons de session.
+   * Anciennement `OTP_PEPPER` : la vérification par code a été retirée, mais
+   * le nom de la variable est conservé pour ne pas invalider les empreintes
+   * déjà stockées en base (elles servent à l'anti-abus).
+   */
+  get selEmpreintes() {
     return optionnel("OTP_PEPPER", "sel-de-developpement-non-securise");
   },
+  /**
+   * Upstash — anti-abus.
+   *
+   * On accepte DEUX jeux de noms, car selon le mode d'installation Vercel
+   * n'écrit pas les mêmes variables (c'est la cause n°1 d'une limitation
+   * silencieusement inactive) :
+   *   • `UPSTASH_REDIS_REST_URL` / `UPSTASH_REDIS_REST_TOKEN`
+   *     → intégration manuelle, .env.local, ou import depuis la console Upstash ;
+   *   • `KV_REST_API_URL` / `KV_REST_API_TOKEN`
+   *     → intégration « Upstash for Redis » / Vercel KV du Marketplace.
+   */
   get upstash() {
-    const url = optionnel("UPSTASH_REDIS_REST_URL");
-    const token = optionnel("UPSTASH_REDIS_REST_TOKEN");
+    const url = optionnel("UPSTASH_REDIS_REST_URL") || optionnel("KV_REST_API_URL");
+    const token =
+      optionnel("UPSTASH_REDIS_REST_TOKEN") || optionnel("KV_REST_API_TOKEN");
     return url && token ? { url, token } : null;
   },
   get appUrl() {
     return optionnel("NEXT_PUBLIC_APP_URL", "http://localhost:3000").replace(/\/$/, "");
-  },
-  get borneToken() {
-    return optionnel("BORNE_TOKEN");
-  },
-  get devOtpCode() {
-    return process.env.NODE_ENV === "production" ? "" : optionnel("DEV_OTP_CODE");
   },
   get whatsappDriver(): "console" | "meta" | "twilio" {
     const driver = optionnel("WHATSAPP_DRIVER", "console");

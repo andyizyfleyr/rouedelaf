@@ -131,57 +131,6 @@ export async function creerParticipant(input: {
 }
 
 /* -------------------------------------------------------------------------- */
-/*  OTP                                                                        */
-/* -------------------------------------------------------------------------- */
-
-export async function enregistrerOtp(input: {
-  telephone: string;
-  codeHash: string;
-  expireLe: Date;
-}): Promise<void> {
-  // On invalide les anciens codes non utilisés pour ce numéro.
-  await sql`
-    UPDATE otp_codes SET utilise = true
-    WHERE telephone = ${input.telephone} AND utilise = false
-  `;
-  await sql`
-    INSERT INTO otp_codes (telephone, code_hash, expire_le)
-    VALUES (${input.telephone}, ${input.codeHash}, ${input.expireLe.toISOString()})
-  `;
-}
-
-export type OtpActif = {
-  id: number;
-  code_hash: string;
-  tentatives: number;
-  expire_le: string;
-};
-
-export async function otpActif(telephone: string): Promise<OtpActif | null> {
-  const [ligne] = await sql`
-    SELECT id, code_hash, tentatives, expire_le
-    FROM otp_codes
-    WHERE telephone = ${telephone} AND utilise = false
-    ORDER BY created_at DESC
-    LIMIT 1
-  `;
-  return (ligne as OtpActif) ?? null;
-}
-
-export async function incrementerTentativesOtp(id: number): Promise<number> {
-  const [ligne] = await sql`
-    UPDATE otp_codes SET tentatives = tentatives + 1
-    WHERE id = ${id}
-    RETURNING tentatives
-  `;
-  return Number(ligne?.tentatives ?? 0);
-}
-
-export async function consommerOtp(id: number): Promise<void> {
-  await sql`UPDATE otp_codes SET utilise = true WHERE id = ${id}`;
-}
-
-/* -------------------------------------------------------------------------- */
 /*  SESSIONS DE JEU                                                            */
 /* -------------------------------------------------------------------------- */
 

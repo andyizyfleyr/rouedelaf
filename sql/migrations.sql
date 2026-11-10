@@ -251,10 +251,10 @@ END $$;
 --  bordeaux #B3122B, le vert profond #0B5D3B et l'or #D4AF37. Le rouge reste
 --  DOMINANT : c'est la couleur qui attire l'œil sur une roue.
 --
---  Comme M3, on ne touche QU'AUX lignes encore sur la valeur précédente : une
---  couleur choisie à la main dans /admin/cadeaux est respectée. Une base qui
---  n'a jamais vu M3 passe d'abord par M3 puis par ce bloc, d'où les deux
---  valeurs possibles en entrée.
+--  Trois générations de couleurs ont existé en production ; on reconnaît donc
+--  chaque lot à son NOM **ou** à l'une de ses anciennes couleurs. C'est la
+--  couleur d'origine qui fait foi : un lot déjà migré, ou recoloré à la main
+--  par l'exploitant dans /admin/cadeaux, n'est pas retouché.
 -- ----------------------------------------------------------------------------
 DO $$
 BEGIN
@@ -263,21 +263,24 @@ BEGIN
      WHERE table_schema = 'public' AND table_name = 'cadeaux'
        AND column_name = 'couleur'
   ) THEN
+    -- Bon d'achat : or (le lot le plus désirable de la roue).
     UPDATE cadeaux SET couleur = '#D4AF37', updated_at = now()
-     WHERE nom = 'Bon d''achat 5 000 FCFA' AND couleur IN ('#C9A227', '#D4A017');
+     WHERE couleur IN ('#C9A227', '#D4A017')
+        OR (nom ILIKE 'Bon d''achat%' AND couleur NOT IN ('#D4AF37', '#B3122B', '#0B5D3B'));
+
+    -- Bordeaux (rouge dominant).
     UPDATE cadeaux SET couleur = '#B3122B', updated_at = now()
-     WHERE nom = 'Casquette boutique' AND couleur IN ('#8B1E3F', '#B3121F');
+     WHERE couleur IN ('#8B1E3F', '#B3121F', '#C41E2A', '#8E0C17', '#B4552A')
+        OR (nom ILIKE 'Casquette%'       AND couleur NOT IN ('#D4AF37', '#B3122B', '#0B5D3B'))
+        OR (nom ILIKE 'Crème%'           AND couleur NOT IN ('#D4AF37', '#B3122B', '#0B5D3B'))
+        OR (nom ILIKE 'Échantillon%'     AND couleur NOT IN ('#D4AF37', '#B3122B', '#0B5D3B'))
+        OR (nom ILIKE 'Réduc%'           AND couleur NOT IN ('#D4AF37', '#B3122B', '#0B5D3B'));
+
+    -- Vert profond.
     UPDATE cadeaux SET couleur = '#0B5D3B', updated_at = now()
-     WHERE nom = 'Sac de courses' AND couleur IN ('#1F6F5C', '#1F7A50');
-    UPDATE cadeaux SET couleur = '#B3122B', updated_at = now()
-     WHERE nom = 'Crème hydratante' AND couleur IN ('#B4552A', '#8E0C17');
-    UPDATE cadeaux SET couleur = '#0B5D3B', updated_at = now()
-     WHERE nom = 'Stylo publicitaire' AND couleur IN ('#3A4A7A', '#2F7A53');
-    UPDATE cadeaux SET couleur = '#B3122B', updated_at = now()
-     WHERE nom = 'Échantillon parfum' AND couleur IN ('#6B4A7A', '#A9822B');
-    UPDATE cadeaux SET couleur = '#B3122B', updated_at = now()
-     WHERE nom = 'Réduction 10 %' AND couleur IN ('#0F6B6B', '#C41E2A');
-    UPDATE cadeaux SET couleur = '#0B5D3B', updated_at = now()
-     WHERE nom = 'Bon café offert' AND couleur IN ('#4A3F35', '#16402E');
+     WHERE couleur IN ('#1F6F5C', '#1F7A50', '#3A4A7A', '#2F7A53', '#4A3F35', '#16402E')
+        OR (nom ILIKE 'Sac%'             AND couleur NOT IN ('#D4AF37', '#B3122B', '#0B5D3B'))
+        OR (nom ILIKE 'Stylo%'           AND couleur NOT IN ('#D4AF37', '#B3122B', '#0B5D3B'))
+        OR (nom ILIKE '%café%'           AND couleur NOT IN ('#D4AF37', '#B3122B', '#0B5D3B'));
   END IF;
 END $$;

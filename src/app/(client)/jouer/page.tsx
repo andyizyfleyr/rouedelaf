@@ -1,5 +1,6 @@
 import { Suspense } from "react";
 import { redirect } from "next/navigation";
+import { Gift, MapPin, Sparkles, Ticket } from "lucide-react";
 
 import { FormulaireJeu } from "@/components/client/FormulaireJeu";
 import { boutique } from "@/lib/env";
@@ -39,27 +40,49 @@ async function Contenu() {
   }
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-3.5">
+      {/* Accroche volontairement courte : le formulaire doit être visible
+          sans défilement sur un écran de 640 px de haut. */}
       <header className="text-center">
-        <p className="mb-3 inline-flex items-center gap-2 rounded-full border border-or/30 bg-or/5 px-3 py-1 text-[11px] tracking-[0.2em] text-or-clair uppercase">
-          🎁 Cadeaux à gagner
-        </p>
-        <h1 className="texte-or-anime font-titre text-[2rem] leading-[1.1] font-bold tracking-tight uppercase sm:text-[2.4rem]">
+        <h1 className="texte-or-anime font-titre text-[1.65rem] leading-[1.05] font-bold tracking-tight uppercase sm:text-[1.95rem]">
           Tournez la roue
         </h1>
-        <p className="mx-auto mt-3 max-w-[38ch] text-sm leading-relaxed text-cendre">
-          Entrez votre nom et votre numéro WhatsApp, puis tentez de gagner un
-          cadeau à retirer chez <strong className="text-creme">{boutique.nom}</strong>.
+        <p className="mx-auto mt-1 flex items-center justify-center gap-1.5 text-[12px] text-cendre">
+          <Gift className="size-3.5 text-or" />
+          Un cadeau à gagner chez{" "}
+          <strong className="font-semibold text-creme">{boutique.nom}</strong>
         </p>
       </header>
 
       <FormulaireJeu />
+
+      {/* Trois promesses en une ligne, pas trois paragraphes */}
+      <ul className="grid grid-cols-3 gap-1.5 text-center">
+        {[
+          { icone: Ticket, titre: "1 tour", detail: "par numéro" },
+          { icone: Sparkles, titre: "100 %", detail: "gagnant" },
+          { icone: MapPin, titre: "Retrait", detail: "en boutique" },
+        ].map(({ icone: Icone, titre, detail }) => (
+          <li
+            key={titre}
+            className="rounded-xl border border-white/[0.06] bg-white/[0.02] px-1 py-2"
+          >
+            <Icone className="mx-auto size-3.5 text-or/80" />
+            <p className="mt-1 text-[11px] leading-none font-bold text-creme">{titre}</p>
+            <p className="mt-0.5 text-[9.5px] leading-none text-cendre/55">{detail}</p>
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }
 
 function SqueletteFormulaire() {
   return (
-    <div className="carte-luxe h-[420px] animate-pulse" aria-hidden />
+    <div className="flex flex-col gap-3.5">
+      <div className="mx-auto h-7 w-56 animate-pulse rounded-lg bg-white/5" />
+      <div className="carte-luxe h-[330px] animate-pulse" aria-hidden />
+      <div className="h-14 animate-pulse rounded-xl bg-white/5" />
+    </div>
   );
 }

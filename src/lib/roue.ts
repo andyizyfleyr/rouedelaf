@@ -20,7 +20,9 @@ export const CASES_MIN = 8;
 export const CASE_PERDUE: CadeauRoue = {
   id: -1,
   nom: "Perdu",
-  couleur: "#2C2A28",
+  // Bordeaux profond : un gris neutre rendait la roue terne, alors que le
+  // rouge sombre s'accorde avec l'or et reste clairement « pas de cadeau ».
+  couleur: "#4A1018",
   icone: "😅",
   probabilite: 0,
   stock: 0,
@@ -78,14 +80,48 @@ export function angleParCase(nombreCases: number): number {
  *
  * On part de la convention : la case 0 commence à 0° et occupe [0°, angle[.
  * La rotation est ensuite multiple de 360° + plusieurs tours complets.
+ *
+ * `derive` (entre -1 et 1) décale l'arrêt à l'intérieur du secteur : la roue
+ * ne s'immobilise pas toujours au même endroit, ce qui rend le résultat plus
+ * crédible. La valeur reste dans le secteur, donc l'aiguille désigne toujours
+ * la bonne case.
  */
-export function angleCible(index: number, nombreCases: number, tours: number): number {
+export function angleCible(
+  index: number,
+  nombreCases: number,
+  tours: number,
+  derive = 0,
+): number {
   const secteur = angleParCase(nombreCases);
-  const centreCase = index * secteur + secteur / 2;
+  // Marge de 18 % de chaque côté : l'aiguille ne touche jamais la séparation.
+  const amplitude = secteur * 0.32;
+  const centreCase = index * secteur + secteur / 2 + derive * amplitude;
   // La roue tourne dans le sens horaire : pour amener le centre de la case
   // sous l'aiguille (en haut), on tourne de -centreCase (modulo 360).
   const cible = (360 - centreCase) % 360;
   return tours * 360 + cible;
+}
+
+/**
+ * Éclaircit (facteur > 1) ou assombrit (facteur < 1) une couleur hexadécimale.
+ * Sert à créer les rayures claires/sombres d'un même secteur : la roue paraît
+ * vernie au lieu d'être un simple camembert de couleurs unies.
+ */
+export function nuancer(hex: string, facteur: number): string {
+  const propre = hex.replace("#", "");
+  const complet =
+    propre.length === 3
+      ? propre
+          .split("")
+          .map((c) => c + c)
+          .join("")
+      : propre;
+  const canal = (i: number) => {
+    const v = parseInt(complet.slice(i, i + 2), 16);
+    if (Number.isNaN(v)) return 128;
+    return Math.max(0, Math.min(255, Math.round(v * facteur)));
+  };
+  return `#${[0, 2, 4].map((i) => canal(i).toString(16).padStart(2, "0")).join("")}`;
 }
 
 /** Couleur lisible (blanc/noir) sur un fond hexadécimal donné. */

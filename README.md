@@ -117,27 +117,24 @@ Les données sont conservées dans `.pgdata/` (ignoré par git).
 1. [console.neon.tech](https://console.neon.tech) → **New project** (région la plus
    proche : `eu-central-1` pour le Bénin).
 2. Copiez la **connection string « Pooled »** (elle contient `-pooler`).
-3. Initialisez la base. **Deux méthodes**, au choix :
+3. **Rien à faire.** Le schéma se crée tout seul.
 
-   **Depuis votre poste** (si votre réseau autorise le port 5432) :
+   À la première requête qui touche la base (une inscription, un tirage, ou
+   simplement l'ouverture du tableau de bord), l'application vérifie que la
+   table `parametres` existe ; si ce n'est pas le cas, elle rejoue
+   `sql/schema.sql` et insère les 8 cadeaux de démonstration
+   (`src/lib/db.ts` → `verifierSchema()`).
+
+   La vérification coûte **un aller-retour par processus** puis est mémorisée ;
+   un échec réseau n'est jamais bloquant et sera retenté à la requête suivante.
+   Vous pouvez donc déployer sur une base vide, sans commande à lancer.
+
+   Deux commandes restent disponibles pour forcer les choses à la main :
 
    ```bash
-   DATABASE_URL="postgresql://...neon.tech/roue?sslmode=require" npm run db:seed
+   DATABASE_URL="…" npm run db:seed        # depuis votre poste (port 5432 ouvert)
+   curl -X POST /api/admin/init            # depuis Vercel (session admin requise)
    ```
-
-   **Depuis Vercel** (si le port 5432 est bloqué par votre réseau — proxy
-   d'entreprise, wifi public…) : déployez d'abord, connectez-vous à
-   `/connexion`, puis déclenchez l'initialisation. Elle rejoue le même
-   `sql/schema.sql` et insère les 8 cadeaux de démonstration :
-
-   ```bash
-   curl -X POST https://votre-domaine.vercel.app/api/admin/init \
-        -H "Cookie: roue_admin=<votre cookie de session>"
-   ```
-
-   La route est **réservée à une session admin** et refuse d'écraser une base
-   déjà peuplée (sauf `?forcer=1`). Elle est idempotente : un second appel ne
-   fait rien.
 
 ### b) Créer Redis Upstash (anti-abus)
 

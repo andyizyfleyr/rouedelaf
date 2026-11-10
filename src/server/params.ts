@@ -1,6 +1,6 @@
 import "server-only";
 
-import { cacheLife, cacheTag } from "next/cache";
+import { cache } from "react";
 
 import { sql } from "@/lib/db";
 
@@ -32,23 +32,19 @@ const DEFAUTS: Parametres = {
 };
 
 /**
- * Lecture des réglages, mutualisée pour la requête en cours.
+ * Mémoïsation PAR REQUÊTE (`React.cache`), et non `use cache`.
  *
- * `use cache` (Cache Components) évite de relire la table plusieurs fois
- * dans une même page — l'accueil admin appelait `lireParametres()` trois fois.
- * Durée volontairement très courte (10 s) et invalidation explicite depuis
- * /admin/reglages (`revalidateTag("parametres")`) : les changements sont
- * visibles immédiatement.
+ * L'accueil admin appelle `lireParametres()` plusieurs fois : la clé est donc
+ * mémorisée pour le rendu en cours, ce qui évite les lectures SQL en double —
+ * c'est le seul gain recherché.
  *
- * Important : ce cache empêche aussi la lecture pendant le prérendu, ce qui
- * supprime le bruit « fetch() rejects when the prerender is complete » que
- * l'on voyait au build sur /admin.
+ * ⚠️ Ne PAS passer en `"use cache"` : cette fonction est appelée depuis les
+ * pages client et admin, qui sont prérendues au build. Un cache persistant
+ * exécuterait la requête SQL pendant le build Vercel, ce qui fait échouer le
+ * déploiement (« A "use cache" function took too long during prerendering »).
+ * Les réglages changent rarement et coûtent une requête : inutile de risquer ça.
  */
-export async function lireParametres(): Promise<Parametres> {
-  "use cache";
-  cacheLife({ stale: 10, revalidate: 10, expire: 30 });
-  cacheTag("parametres");
-
+export const lireParametres: () => Promise<Parametres> = cache(async (): Promise<Parametres> => {
   try {
     const lignes = await sql`SELECT cle, valeur FROM parametres`;
     const map = new Map(lignes.map((l) => [String(l.cle), String(l.valeur)]));
@@ -82,7 +78,7 @@ export async function lireParametres(): Promise<Parametres> {
     console.error("[params] lecture impossible, valeurs par défaut", e);
     return DEFAUTS;
   }
-}
+});
 
 /** Écrit un paramètre (admin). */
 export async function ecrireParametre(cle: string, valeur: string): Promise<void> {

@@ -18,6 +18,7 @@ import {
   TriangleAlert,
 } from "lucide-react";
 
+import { IconeCadeau } from "@/components/roue/IconeCadeau";
 import { BoutonOr, Carte, Pastille, TitreOr } from "@/components/ui/Base";
 import { formatDateHeure, tempsRestant } from "@/lib/format";
 import { lancerConfettis } from "@/lib/confettis";
@@ -85,37 +86,36 @@ export function EcranResultat({
   }
 
   return (
-    <div className="flex flex-1 flex-col gap-5">
+    <div className="flex flex-1 flex-col gap-3">
       {/* ---------------------------------------------------------------- */}
       {/* En-tête : gagné / perdu                                           */}
       {/* ---------------------------------------------------------------- */}
       <motion.header
-        initial={{ opacity: 0, y: 14 }}
+        initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4 }}
-        className="text-center"
+        transition={{ duration: 0.35 }}
+        className="flex items-center gap-3 text-left"
       >
         <motion.div
-          initial={{ scale: 0.6, rotate: -12 }}
+          initial={{ scale: 0.5, rotate: -14 }}
           animate={{ scale: 1, rotate: 0 }}
-          transition={{ type: "spring", stiffness: 260, damping: 14, delay: 0.1 }}
-          className="mx-auto mb-4 flex size-16 items-center justify-center rounded-full border border-or/40 bg-or/10"
+          transition={{ type: "spring", stiffness: 280, damping: 14, delay: 0.08 }}
+          className="flex size-11 shrink-0 items-center justify-center rounded-full border border-or/40 bg-or/10"
         >
           {gagne ? (
-            <PartyPopper className="size-8 text-or" />
+            <PartyPopper className="size-5 text-or" />
           ) : (
-            <Ticket className="size-8 text-cendre" />
+            <Ticket className="size-5 text-cendre" />
           )}
         </motion.div>
-
-        <TitreOr as="h1" className="text-[1.9rem] leading-tight sm:text-[2.2rem]">
-          {gagne ? "Vous avez gagné !" : "Pas de chance"}
-        </TitreOr>
-        <p className="mx-auto mt-2 max-w-[36ch] text-[13.5px] leading-relaxed text-cendre">
-          {gagne
-            ? "Présentez ce code en boutique avant la date limite pour retirer votre cadeau."
-            : messagePerdu}
-        </p>
+        <div className="min-w-0">
+          <TitreOr as="h1" className="text-[1.45rem] leading-tight sm:text-[1.7rem]">
+            {gagne ? "Vous avez gagné !" : "Pas de chance"}
+          </TitreOr>
+          <p className="mt-0.5 line-clamp-2 text-[11.5px] leading-snug text-cendre/85">
+            {gagne ? "Montrez ce code en boutique." : messagePerdu}
+          </p>
+        </div>
       </motion.header>
 
       {/* ---------------------------------------------------------------- */}
@@ -123,92 +123,101 @@ export function EcranResultat({
       {/* ---------------------------------------------------------------- */}
       {gagne && (
         <>
-          <Carte className="relative overflow-hidden text-center">
+          <Carte className="relative overflow-hidden !p-4">
             <div
               className="pointer-events-none absolute inset-x-0 top-0 h-24 opacity-40 blur-2xl"
               style={{
                 background: `radial-gradient(ellipse at top, ${tirage.cadeau_couleur ?? "#e8c66a"}, transparent 70%)`,
               }}
             />
-            <div className="relative">
-              <span className="text-4xl">{tirage.cadeau_icone ?? "🎁"}</span>
-              <h2 className="mt-2 font-titre text-xl font-semibold text-creme">
-                {tirage.cadeau_nom ?? "Cadeau surprise"}
-              </h2>
-              {tirage.cadeau_description && (
-                <p className="mx-auto mt-1.5 max-w-[34ch] text-[12.5px] leading-relaxed text-cendre/80">
-                  {tirage.cadeau_description}
-                </p>
-              )}
-              {tirage.cadeau_image_url && (
-                <div className="relative mx-auto mt-3 aspect-square w-36 overflow-hidden rounded-xl border border-or/25">
+            <div className="relative flex items-center gap-3 text-left">
+              {tirage.cadeau_image_url ? (
+                <div className="relative size-16 shrink-0 overflow-hidden rounded-xl border border-or/30">
                   <Image
                     src={tirage.cadeau_image_url}
                     alt={tirage.cadeau_nom ?? "Cadeau"}
                     fill
-                    sizes="144px"
+                    sizes="64px"
                     className="object-cover"
+                  />
+                </div>
+              ) : (
+                <span className="grid size-16 shrink-0 place-items-center rounded-xl border border-or/25 bg-black/30">
+                  {/* Icône vectorielle et non emoji : les emoji ne s'affichent
+                      pas sur beaucoup de téléphones (carrés vides). */}
+                  <IconeCadeau
+                    nom={tirage.cadeau_nom ?? "Cadeau"}
+                    taille={30}
+                    couleur="rgba(232,198,106,0.95)"
+                  />
+                </span>
+              )}
+              <div className="min-w-0">
+                <h2 className="font-titre text-[17px] leading-tight font-semibold text-creme">
+                  {tirage.cadeau_nom ?? "Cadeau surprise"}
+                </h2>
+                {tirage.cadeau_description && (
+                  <p className="mt-0.5 line-clamp-2 text-[11.5px] leading-snug text-cendre/75">
+                    {tirage.cadeau_description}
+                  </p>
+                )}
+              </div>
+            </div>
+          </Carte>
+
+          {/* Code + QR */}
+          <Carte className="!p-4">
+            <div className="flex items-center gap-3">
+              <div className="min-w-0 flex-1">
+                <Pastille ton="or" className="mb-2 !px-2.5 !py-0.5 !text-[10px]">
+                  <QrIcone className="size-3" /> Code de retrait
+                </Pastille>
+                <button
+                  type="button"
+                  onClick={copierCode}
+                  className="group flex w-full items-center justify-center gap-2 rounded-xl border border-or/35 bg-black/40 px-2 py-2.5 transition-colors hover:border-or/60"
+                  aria-label="Copier mon code"
+                >
+                  <span className="truncate font-mono text-[17px] font-bold tracking-[0.14em] text-or-clair">
+                    {tirage.code_unique}
+                  </span>
+                  {copie ? (
+                    <Check className="size-4 shrink-0 text-emerald-400" />
+                  ) : (
+                    <Copy className="size-4 shrink-0 text-or/60 group-hover:text-or" />
+                  )}
+                </button>
+                <p className="mt-1 text-center text-[9.5px] tracking-wide text-cendre/50 uppercase">
+                  Appuyez pour copier
+                </p>
+              </div>
+
+              {qrDataUrl && (
+                <div className="shrink-0 rounded-xl border border-or/30 bg-or-clair p-1.5 shadow-[0_12px_28px_-16px_rgba(232,198,106,0.8)]">
+                  {/* Image data-URL générée par le serveur : <img> volontaire */}
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={qrDataUrl}
+                    alt={`QR code du cadeau ${tirage.code_unique}`}
+                    width={104}
+                    height={104}
+                    className="size-[104px] rounded-md"
                   />
                 </div>
               )}
             </div>
           </Carte>
 
-          {/* Code + QR */}
-          <Carte className="text-center">
-            <Pastille ton="or" className="mb-3">
-              <QrIcone className="size-3.5" /> Code de retrait
-            </Pastille>
-
-            <button
-              type="button"
-              onClick={copierCode}
-              className="group mx-auto flex items-center justify-center gap-2 rounded-xl border border-or/35 bg-black/40 px-4 py-3 transition-colors hover:border-or/60"
-              aria-label="Copier mon code"
-            >
-              <span className="font-mono text-xl font-bold tracking-[0.18em] text-or-clair">
-                {tirage.code_unique}
-              </span>
-              {copie ? (
-                <Check className="size-4 text-emerald-400" />
-              ) : (
-                <Copy className="size-4 text-or/60 group-hover:text-or" />
-              )}
-            </button>
-            <p className="mt-1.5 text-[10.5px] tracking-wide text-cendre/55 uppercase">
-              Appuyez pour copier
-            </p>
-
-            {qrDataUrl && (
-              <div className="mt-4 flex flex-col items-center">
-                <div className="rounded-2xl border border-or/30 bg-or-clair p-2.5 shadow-[0_18px_40px_-20px_rgba(232,198,106,0.7)]">
-                  {/* Image data-URL générée par le serveur : <img> volontaire */}
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={qrDataUrl}
-                    alt={`QR code du cadeau ${tirage.code_unique}`}
-                    width={168}
-                    height={168}
-                    className="size-[168px] rounded-lg"
-                  />
-                </div>
-                <p className="mt-2 max-w-[30ch] text-[11px] leading-relaxed text-cendre/60">
-                  La vendeuse scanne ce QR code pour valider la remise en boutique.
-                </p>
-              </div>
-            )}
-          </Carte>
-
           {/* Validité + retrait */}
-          <Carte className="!p-4">
+          <Carte className="!p-3.5">
             <div className="flex items-center justify-between gap-3">
-              <div className="flex items-start gap-2.5">
+              <div className="flex items-start gap-2">
                 <CalendarClock className="mt-0.5 size-4 shrink-0 text-or" />
                 <div>
-                  <p className="text-[11px] tracking-[0.14em] text-cendre/60 uppercase">
+                  <p className="text-[10.5px] tracking-[0.14em] text-cendre/60 uppercase">
                     À retirer avant
                   </p>
-                  <p className="text-[13px] font-semibold text-creme">
+                  <p className="text-[12.5px] font-semibold text-creme">
                     {formatDateHeure(tirage.expire_le)}
                   </p>
                   {restant && !expire && (
@@ -223,7 +232,7 @@ export function EcranResultat({
               )}
             </div>
 
-            <div className="filet-or my-3" />
+            <div className="filet-or my-2.5" />
 
             <div className="flex items-start gap-2.5">
               <MapPin className="mt-0.5 size-4 shrink-0 text-or" />
@@ -254,7 +263,7 @@ export function EcranResultat({
           <Pastille ton="neutre" className="mb-3">
             <Ticket className="size-3.5" /> Votre bon de consolation
           </Pastille>
-          <p className="font-titre text-[3.2rem] leading-none font-bold text-or-clair">
+          <p className="font-titre text-[3rem] leading-none font-bold text-or-clair">
             −{tirage.reduction_consolation ?? 10}%
           </p>
           <p className="mt-1 text-[12.5px] text-cendre">
@@ -273,9 +282,8 @@ export function EcranResultat({
       {/* ---------------------------------------------------------------- */}
       <Partager tourBonus={!gagne} />
 
-      <p className="text-center text-[11px] leading-relaxed text-cendre/50">
-        Une seule participation par numéro WhatsApp. Tirage effectué sur le serveur de la
-        boutique.
+      <p className="text-center text-[10px] leading-snug text-cendre/45">
+        1 participation par numéro · Tirage serveur
       </p>
     </div>
   );
@@ -326,40 +334,29 @@ function Partager({ tourBonus }: { tourBonus: boolean }) {
   }
 
   return (
-    <Carte className="!p-4">
-      <div className="flex items-start gap-3">
-        <span className="flex size-9 shrink-0 items-center justify-center rounded-full border border-emeraude/40 bg-emeraude/15">
-          <Share2 className="size-4 text-emerald-300" />
+    <Carte className="!p-3.5">
+      <p className="flex items-center gap-2 text-[11.5px] leading-snug text-cendre/80">
+        <span className="grid size-6 shrink-0 place-items-center rounded-full border border-emeraude/40 bg-emeraude/15">
+          <Share2 className="size-3 text-emerald-300" />
         </span>
-        <div className="min-w-0">
-          <p className="text-[13px] font-semibold text-creme">
-            {tourBonus ? "Encore une chance ?" : "Faites gagner un ami"}
-          </p>
-          <p className="mt-0.5 text-[11.5px] leading-relaxed text-cendre/75">
-            Partagez votre lien : dès qu&apos;un ami s&apos;inscrit, vous gagnez{" "}
-            <strong className="text-or-clair">1 tour offert</strong>.
-          </p>
-        </div>
-      </div>
+        {tourBonus ? "Encore une chance : " : "Faites gagner un ami : "}
+        <strong className="font-semibold text-or-clair">+1 tour offert</strong>
+      </p>
 
-      <div className="mt-3 flex flex-col gap-2">
+      <div className="mt-2 flex gap-1.5">
         <BoutonOr
           type="button"
           onClick={partager}
           disabled={chargement || !lien}
-          className="!py-3 text-sm"
+          className="!py-2.5 flex-1 text-[12.5px]"
         >
-          <MessageCircle className="size-4" />
-          {chargement ? "Préparation du lien…" : "Partager sur WhatsApp"}
+          <MessageCircle className="size-3.5" />
+          {chargement ? "Lien…" : "Partager"}
         </BoutonOr>
-        <Link href="/roue" className="btn-fantome text-[12.5px]">
-          <Gift className="size-3.5" /> Retourner à la roue
+        <Link href="/roue" className="btn-fantome shrink-0 !px-3 !py-2.5 text-[12.5px]">
+          <Gift className="size-3.5" /> La roue
         </Link>
       </div>
-
-      {lien && (
-        <p className="mt-2 truncate text-center text-[10px] text-cendre/45">{lien}</p>
-      )}
     </Carte>
   );
 }

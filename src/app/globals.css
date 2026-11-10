@@ -61,6 +61,22 @@
   to { transform: translateX(-50%); }
 }
 
+/* Ampoules de la roue : clignotement décalé (voir components/roue/Roue.tsx) */
+@keyframes ampoule {
+  0%, 45% { opacity: 0.95; }
+  55%, 100% { opacity: 0.18; }
+}
+.ampoule-roue {
+  animation: ampoule 0.44s steps(1, end) infinite alternate;
+}
+
+/* Entrée en scène de la roue */
+@keyframes apparait {
+  from { opacity: 0; transform: scale(0.9) translateY(10px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+.apparait { animation: apparait 0.45s cubic-bezier(0.16, 1, 0.3, 1) both; }
+
 /* --------------------------------------------------------------------------
    Base
    -------------------------------------------------------------------------- */

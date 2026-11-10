@@ -1,6 +1,6 @@
 "use server";
 
-import { revalidatePath, revalidateTag } from "next/cache";
+import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
 import { exigerAdmin } from "@/lib/session";
@@ -57,10 +57,8 @@ export async function actionEnregistrerReglages(
       ecrireParametre("active_jeu", d.activeJeu ? "true" : "false"),
     ]);
     await journaliser("reglages_modifies", { ...d });
-    // Les réglages sont mis en cache 10 s pour toute la requête (voir
-    // src/server/params.ts) : on l'invalide immédiatement pour que le
-    // changement soit visible sans attendre.
-    revalidateTag("parametres", "max");
+    // Les réglages sont lus à chaque rendu (mémoïsation par requête
+    // uniquement, voir src/server/params.ts) : rafraîchir les pages suffit.
     revalidatePath("/admin");
     revalidatePath("/roue");
     return { ok: true, message: "Réglages enregistrés." };

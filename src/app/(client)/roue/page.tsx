@@ -35,9 +35,10 @@ export default function PageRoue() {
 /** Coquille statique : la roue apparaît immédiatement (même en 3G). */
 function SqueletteRoue() {
   return (
-    <div className="flex flex-1 flex-col items-center justify-center gap-4 py-10">
-      <div className="size-[78vw] max-w-[420px] animate-pulse rounded-full border border-or/15 bg-gradient-to-br from-white/5 to-transparent" />
-      <p className="text-[12px] tracking-[0.2em] text-cendre/50 uppercase">Préparation de la roue…</p>
+    <div className="flex flex-1 flex-col justify-center gap-3 py-1">
+      <div className="mx-auto h-4 w-40 animate-pulse rounded bg-white/5" />
+      <div className="mx-auto aspect-square w-full max-w-[340px] animate-pulse rounded-full border border-or/15 bg-gradient-to-br from-white/5 to-transparent" />
+      <div className="mt-2 h-[46px] w-full animate-pulse rounded-full bg-white/5" />
     </div>
   );
 }
@@ -68,19 +69,5 @@ async function Contenu() {
     })),
   );
 
-  return (
-    <EcranRoue
-      cases={cases}
-      nom={session.nom}
-      toursRestants={restants}
-      codeParrain={await codeParrain(session.participantId)}
-    />
-  );
-}
-
-async function codeParrain(participantId: number): Promise<string | null> {
-  const [ligne] = await sql`
-    SELECT code_parrain FROM participants WHERE id = ${participantId}
-  `;
-  return (ligne?.code_parrain as string | undefined) ?? null;
+  return <EcranRoue cases={cases} nom={session.nom} toursRestants={restants} />;
 }

@@ -318,11 +318,17 @@ export function traduireErreur(e: unknown): ErreurMetier {
 export async function etatSchema(): Promise<{
   joignable: boolean;
   version: number;
+  versionAttendue: number;
   participantFacultatif: boolean | null;
   gainAnonymeAutorise: boolean | null;
 }> {
   try {
-    await sql`SELECT 1`;
+    // On force la vérification : sur une instance fraîche, c'est ici que les
+    // migrations s'appliquent. Sans cet appel explicite, la sonde pouvait
+    // répondre « version 7 » alors que la version 8 était déployée, simplement
+    // parce que la requête SELECT 1 passait par le cache `schemaPret`.
+    schemaPret = false;
+    await verifierSchema();
     const [v] = await sql`
       SELECT COALESCE((SELECT valeur FROM parametres WHERE cle = 'schema_version'), '0') AS version
     `;
@@ -341,6 +347,7 @@ export async function etatSchema(): Promise<{
     return {
       joignable: true,
       version: Number((v as { version?: string }).version ?? 0),
+      versionAttendue: VERSION_SCHEMA,
       participantFacultatif:
         colonne === undefined ? null : (colonne as { is_nullable: string }).is_nullable === "YES",
       gainAnonymeAutorise: contrainte
@@ -351,6 +358,7 @@ export async function etatSchema(): Promise<{
     return {
       joignable: false,
       version: 0,
+      versionAttendue: VERSION_SCHEMA,
       participantFacultatif: null,
       gainAnonymeAutorise: null,
     };

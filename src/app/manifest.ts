@@ -8,16 +8,16 @@ import { boutique } from "@/lib/env";
  */
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: `${boutique.nom} — Roue de la Fortune`,
-    short_name: "La Roue",
+    name: `${boutique.nom} — Roue de Noël`,
+    short_name: "Roue de Noël",
     description:
-      "Tournez la roue et gagnez des cadeaux à retirer en boutique.",
+      "Tournez la roue de Noël et gagnez des cadeaux à retirer en boutique.",
     start_url: "/jouer",
     scope: "/",
     display: "standalone",
     orientation: "portrait",
-    background_color: "#0a0908",
-    theme_color: "#0a0908",
+    background_color: "#0b2018",
+    theme_color: "#0b2018",
     lang: "fr",
     categories: ["shopping", "games", "entertainment"],
     icons: [

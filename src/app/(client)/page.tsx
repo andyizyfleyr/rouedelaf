@@ -36,11 +36,11 @@ function Splash() {
         className="animate-scintille size-16 rounded-full border border-or-clair/70"
         style={{
           background:
-            "conic-gradient(#e8c66a 0 45deg, #7c1d2e 45deg 90deg, #e8c66a 90deg 135deg, #1f6f5c 135deg 180deg, #e8c66a 180deg 225deg, #7c1d2e 225deg 270deg, #e8c66a 270deg 315deg, #1f6f5c 315deg 360deg)",
+            "conic-gradient(#e8c66a 0 45deg, #b3121f 45deg 90deg, #16402e 90deg 135deg, #e8c66a 135deg 180deg, #b3121f 180deg 225deg, #16402e 225deg 270deg, #e8c66a 270deg 315deg, #2f7a53 315deg 360deg)",
         }}
       />
       <p className="texte-or font-titre text-sm tracking-[0.24em] uppercase">
-        Roue de la fortune
+        Roue de Noël
       </p>
     </div>
   );

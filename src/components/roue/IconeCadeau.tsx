@@ -1,12 +1,12 @@
 "use client";
 
 import {
-  CircleSlash,
   Coffee,
   CreditCard,
   Droplets,
   FlaskConical,
   Gift,
+  Snowflake,
   Package,
   PenLine,
   ShoppingBag,
@@ -29,7 +29,9 @@ const REGLES: { motif: RegExp; icone: LucideIcon }[] = [
   // « Perdu » doit se lire immédiatement comme « pas de cadeau ». Une étoile
   // dorée (ancienne icône) ressemblait à un cadeau et donnait l'impression
   // d'une roue pleine de lots.
-  { motif: /perdu|rien|dommage/i, icone: CircleSlash },
+  // Thème de Noël : la case perdante porte un flocon (« pas de cadeau cette
+  // fois ») plutôt qu'un cercle barré, plus agressif et moins festif.
+  { motif: /perdu|rien|dommage/i, icone: Snowflake },
   { motif: /achat|bon|ch[eè]que|credit|crédit|carte/i, icone: CreditCard },
   { motif: /casquette|chapeau|t-shirt|textile|v[eê]tement/i, icone: Shirt },
   { motif: /sac|courses|panier/i, icone: ShoppingBag },

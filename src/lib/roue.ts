@@ -20,9 +20,9 @@ export const CASES_MIN = 8;
 export const CASE_PERDUE: CadeauRoue = {
   id: -1,
   nom: "Perdu",
-  // Bordeaux profond : un gris neutre rendait la roue terne, alors que le
-  // rouge sombre s'accorde avec l'or et reste clairement « pas de cadeau ».
-  couleur: "#4A1018",
+  // Rouge de Noël très sombre : sur une roue de fête, une case « pas de
+  // cadeau » doit rester lisible (rouge profond) sans casser l'ambiance.
+  couleur: "#5A0E16",
   // L'emoji n'est jamais affiché sur la roue (rendu inégal selon les
   // téléphones, souvent un carré vide) : l'icône vient de IconeCadeau.
   icone: "",

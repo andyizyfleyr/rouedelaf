@@ -16,11 +16,11 @@ import {
   PartyPopper,
   QrCode as QrIcone,
   Share2,
-  Ticket,
   TriangleAlert,
   X,
 } from "lucide-react";
 
+import { Flocon, Houx } from "@/components/client/Ornements";
 import { IconeCadeau } from "@/components/roue/IconeCadeau";
 import { formatDateHeure, tempsRestant } from "@/lib/format";
 import { lancerConfettis } from "@/lib/confettis";
@@ -210,6 +210,20 @@ export function PopupResultat({
           >
             {/* Poignée (indice de feuille glissante sur mobile) */}
             <div className="mx-auto mb-2 h-1 w-10 rounded-full bg-white/20 sm:hidden" />
+            {/* Guirlande de Noël : le résultat tombe « sous les lumières ». */}
+            <div className="mb-2.5 flex items-center justify-center gap-1" aria-hidden>
+              {Array.from({ length: 11 }, (_, i) => (
+                <span
+                  key={i}
+                  className="animate-scintille size-1 rounded-full"
+                  style={{
+                    background: i % 3 === 0 ? "#ffd977" : i % 3 === 1 ? "#d9263a" : "#a9d8c9",
+                    boxShadow: `0 0 6px ${i % 3 === 0 ? "rgba(255,217,119,0.8)" : "rgba(217,38,58,0.65)"}`,
+                    animationDelay: `${(i % 4) * 0.3}s`,
+                  }}
+                />
+              ))}
+            </div>
 
             <button
               type="button"
@@ -256,7 +270,7 @@ export function PopupResultat({
                 {gagne ? (
                   <PartyPopper className="size-5 text-or" />
                 ) : (
-                  <Ticket className="size-5 text-cendre" />
+                  <Flocon className="size-5" />
                 )}
               </motion.div>
               <div className="min-w-0">
@@ -429,6 +443,12 @@ export function PopupResultat({
                 </Link>
               </div>
             </div>
+
+            <p className="mt-2.5 flex items-center justify-center gap-1.5 text-[9.5px] tracking-[0.16em] text-givre/50 uppercase">
+              <Houx className="size-3" />
+              Joyeux Noël · {boutique.nom}
+              <Houx className="size-3 -scale-x-100" />
+            </p>
           </motion.div>
         </motion.div>
       )}

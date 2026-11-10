@@ -9,11 +9,10 @@ import {
   Gift,
   Loader2,
   MapPin,
-  Sparkles,
-  Ticket,
   TriangleAlert,
 } from "lucide-react";
 
+import { Flocon, Sapin } from "@/components/client/Ornements";
 import { PopupResultat } from "@/components/client/PopupResultat";
 import { Roue } from "@/components/roue/Roue";
 import { entetesJeu } from "@/lib/appareil";
@@ -259,10 +258,10 @@ export function EcranRoue({
           className={`inline-flex max-w-full items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-[9px] leading-tight font-semibold tracking-[0.16em] uppercase sm:px-3 sm:py-1 sm:text-[10.5px] ${
             jeuIndisponible && !resultat
               ? "border-cendre/25 bg-white/[0.04] text-cendre/70"
-              : "border-or/30 bg-or/[0.07] text-or-clair/85"
+              : "border-or/35 bg-sapin-2/70 text-or-clair/90"
           }`}
         >
-          <Sparkles className="size-2.5 shrink-0 sm:size-3" />
+          <Sapin className="size-3 shrink-0 sm:size-3.5" />
           {/* Pas de « cadeau garanti » quand il n'y a plus de cadeau. */}
           <span>
             {jeuIndisponible && !resultat
@@ -301,7 +300,7 @@ export function EcranRoue({
 
         <p className="max-w-[34ch] text-[10.5px] leading-snug text-cendre/70 sm:text-[13px]">
           {peutTourner
-            ? "Tournez la roue et découvrez votre cadeau. Un seul tour par personne."
+            ? "Tournez la roue de Noël et découvrez votre cadeau. Un seul tour par personne."
             : jeuIndisponible && !resultat
               ? messageFermeture
               : "Votre tour est terminé. Retrouvez votre cadeau ci-dessous."}
@@ -331,7 +330,7 @@ export function EcranRoue({
             </span>
           </span>
           <span className="flex items-center gap-2">
-            <Ticket className="size-3.5 shrink-0 text-or/70" />
+            <Flocon className="size-3.5 shrink-0" />
             Présentez le code en boutique
           </span>
         </div>

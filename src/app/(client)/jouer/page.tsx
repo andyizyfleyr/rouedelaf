@@ -1,6 +1,8 @@
 import { Suspense } from "react";
 import Link from "next/link";
-import { Gift, MapPin, Sparkles, Ticket } from "lucide-react";
+import { Gift, MapPin, Sparkles } from "lucide-react";
+
+import { Houx, Sapin } from "@/components/client/Ornements";
 
 import { FormulaireJeu } from "@/components/client/FormulaireJeu";
 import { boutique } from "@/lib/env";
@@ -54,12 +56,17 @@ async function Contenu() {
       {/* Accroche volontairement courte : le formulaire doit être visible
           sans défilement sur un écran de 640 px de haut. */}
       <header className="text-center">
+        <p className="mx-auto mb-1 flex items-center justify-center gap-1.5 text-[10px] font-semibold tracking-[0.22em] text-givre/75 uppercase">
+          <Houx className="size-3.5" />
+          Noël chez {boutique.nom}
+          <Houx className="size-3.5 -scale-x-100" />
+        </p>
         <h1 className="texte-or-anime font-titre text-[1.65rem] leading-[1.05] font-bold tracking-tight uppercase sm:text-[1.95rem]">
           Tournez la roue
         </h1>
         <p className="mx-auto mt-1 flex items-center justify-center gap-1.5 text-[12px] text-cendre">
           <Gift className="size-3.5 text-or" />
-          Un cadeau à gagner chez{" "}
+          Un cadeau de Noël à gagner chez{" "}
           <strong className="font-semibold text-creme">{boutique.nom}</strong>
         </p>
       </header>
@@ -70,7 +77,7 @@ async function Contenu() {
             Vous avez déjà participé
           </p>
           {premierGain ? (
-            <div className="rounded-xl border border-or/25 bg-or/[0.06] px-2.5 py-2">
+            <div className="rounded-xl border border-or/30 bg-sapin-3/40 px-2.5 py-2">
               <p className="font-titre text-[13px] leading-tight font-bold text-or-clair">
                 {premierGain.cadeau_nom ?? "Cadeau"}
               </p>
@@ -110,7 +117,7 @@ async function Contenu() {
       {/* Trois promesses en une ligne, pas trois paragraphes */}
       <ul className="grid grid-cols-3 gap-1.5 text-center">
         {[
-          { icone: Ticket, titre: "1 tour", detail: "par numéro" },
+          { icone: Sapin, titre: "1 tour", detail: "par numéro" },
           { icone: Sparkles, titre: "100 %", detail: "gagnant" },
           { icone: MapPin, titre: "Retrait", detail: "en boutique" },
         ].map(({ icone: Icone, titre, detail }) => (

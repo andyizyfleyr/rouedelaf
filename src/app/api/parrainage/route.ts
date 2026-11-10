@@ -34,7 +34,7 @@ export async function GET(request: Request) {
   const lien = `${base}/jouer?ref=${participant.code_parrain}`;
 
   const texte = encodeURIComponent(
-    `Je tente ma chance à la Roue de la Fortune 🎁 Tourne la roue et gagne un cadeau à retirer en boutique : ${lien}`,
+    `Je tente ma chance à la Roue de Noël 🎄 Tourne la roue et gagne un cadeau à retirer en boutique : ${lien}`,
   );
 
   return NextResponse.json({

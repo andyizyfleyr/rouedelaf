@@ -232,7 +232,7 @@ export function Roue({
         className="pointer-events-none absolute -inset-[12%] -z-10 rounded-full opacity-70 blur-3xl"
         style={{
           background:
-            "radial-gradient(circle, rgba(232,198,106,0.30) 0%, rgba(124,29,46,0.16) 45%, transparent 70%)",
+            "radial-gradient(circle, rgba(255,217,119,0.34) 0%, rgba(179,18,31,0.20) 42%, rgba(47,122,83,0.14) 62%, transparent 72%)",
         }}
       />
 
@@ -240,7 +240,7 @@ export function Roue({
         viewBox={`0 0 ${TAILLE} ${TAILLE}`}
         className="h-full w-full drop-shadow-[0_25px_45px_rgba(0,0,0,0.8)]"
         role="img"
-        aria-label="Roue de la fortune"
+        aria-label="Roue de Noël"
       >
         <defs>
           {secteurs.map((s) => (
@@ -261,20 +261,23 @@ export function Roue({
           {/* Jante : anneau métallique à facettes */}
           <linearGradient id="jante" x1="0" y1="0" x2="1" y2="1">
             <stop offset="0%" stopColor="#fff6d2" />
-            <stop offset="18%" stopColor="#e8c66a" />
-            <stop offset="38%" stopColor="#a9822b" />
-            <stop offset="52%" stopColor="#ffeeb4" />
-            <stop offset="68%" stopColor="#c9a227" />
-            <stop offset="86%" stopColor="#7a5a14" />
+            <stop offset="14%" stopColor="#ffd977" />
+            <stop offset="30%" stopColor="#a9822b" />
+            <stop offset="42%" stopColor="#e8c66a" />
+            <stop offset="54%" stopColor="#b3121f" />
+            <stop offset="62%" stopColor="#ffeeb4" />
+            <stop offset="78%" stopColor="#2f7a53" />
+            <stop offset="88%" stopColor="#7a5a14" />
             <stop offset="100%" stopColor="#f8e7a8" />
           </linearGradient>
 
           {/* Moyeu : dôme doré */}
           <radialGradient id="moyeu" cx="38%" cy="32%" r="72%">
             <stop offset="0%" stopColor="#fffbe8" />
-            <stop offset="38%" stopColor="#f0d489" />
-            <stop offset="72%" stopColor="#b98f33" />
-            <stop offset="100%" stopColor="#5d4410" />
+            <stop offset="30%" stopColor="#ffd977" />
+            <stop offset="60%" stopColor="#c9a227" />
+            <stop offset="84%" stopColor="#b3121f" />
+            <stop offset="100%" stopColor="#5c0810" />
           </radialGradient>
 
           {/* Doigt / aiguille */}
@@ -322,7 +325,7 @@ export function Roue({
         {/* ── Jante extérieure ─────────────────────────────────────────── */}
         <circle cx={CENTRE} cy={CENTRE} r={RAYON} fill="url(#jante)" />
         <circle cx={CENTRE} cy={CENTRE} r={RAYON - 3} fill="none" stroke="rgba(0,0,0,0.45)" strokeWidth="1.2" />
-        <circle cx={CENTRE} cy={CENTRE} r={RAYON - 9} fill="#0b0906" />
+        <circle cx={CENTRE} cy={CENTRE} r={RAYON - 9} fill="#081711" />
         <circle cx={CENTRE} cy={CENTRE} r={RAYON - 9} fill="none" stroke="rgba(255,246,210,0.28)" strokeWidth="0.8" />
 
         {/* ── Partie tournante ─────────────────────────────────────────── */}
@@ -348,17 +351,19 @@ export function Roue({
           {secteurs.map((s, i) => {
             const rad = ((s.milieu - 90) * Math.PI) / 180;
             const r = RAYON - 15;
+            // Guirlande : or, rouge de Noël, givre — comme un vrai sapin.
+            const teinte = i % 3 === 0 ? "#ffd977" : i % 3 === 1 ? "#ff5a68" : "#d8f2e9";
             return (
               <circle
                 key={`amp-${s.cle}`}
                 cx={CENTRE + r * Math.cos(rad)}
                 cy={CENTRE + r * Math.sin(rad)}
-                r={2.6}
-                fill="#fff6d2"
+                r={2.8}
+                fill={teinte}
                 filter="url(#haloAmpoule)"
                 className={enMouvement ? "ampoule-roue" : undefined}
-                opacity={enMouvement ? undefined : 0.5}
-                style={enMouvement ? { animationDelay: `${(i % 2) * 0.22}s` } : undefined}
+                opacity={enMouvement ? undefined : 0.62}
+                style={enMouvement ? { animationDelay: `${(i % 3) * 0.18}s` } : undefined}
               />
             );
           })}
@@ -430,8 +435,8 @@ export function Roue({
         allongeait la page de ~28 px et créait un défilement parasite.
       */}
       <div className="pointer-events-none absolute inset-x-0 bottom-0 flex justify-center">
-        <span className="max-w-[86%] truncate rounded-full border border-or/30 bg-nuit/90 px-3.5 py-1 text-[10.5px] font-bold tracking-[0.14em] text-or-clair uppercase shadow-lg backdrop-blur">
-          {enMouvement ? "La roue tourne…" : (secteurCourant ?? "Bonne chance")}
+        <span className="max-w-[86%] truncate rounded-full border border-or/35 bg-sapin/90 px-3.5 py-1 text-[10.5px] font-bold tracking-[0.14em] text-or-clair uppercase shadow-lg backdrop-blur">
+          {enMouvement ? "La roue tourne…" : (secteurCourant ?? "Joyeux Noël")}
         </span>
       </div>
     </div>

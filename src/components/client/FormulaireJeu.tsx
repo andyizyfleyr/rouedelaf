@@ -3,8 +3,9 @@
 import { motion } from "framer-motion";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
-import { ArrowRight, Gift, Loader2, Lock, Sparkles, Trophy } from "lucide-react";
+import { ArrowRight, Loader2, Lock, Trophy } from "lucide-react";
 
+import { Flocon, Sapin } from "@/components/client/Ornements";
 import { BoutonOr } from "@/components/ui/Base";
 import { normaliserSource, telephoneLocalValide } from "@/lib/format";
 import { deverrouillerAudio } from "@/lib/sons";
@@ -100,9 +101,9 @@ export function FormulaireJeu() {
         {/* Bandeau de réassurance : 3 promesses, une ligne, très petit */}
         <div className="grid grid-cols-3 divide-x divide-white/10 rounded-xl border border-white/[0.06] bg-white/[0.03] py-1.5">
           {[
-            { icone: Gift, texte: "Cadeau" },
+            { icone: Sapin, texte: "Cadeau" },
             { icone: Trophy, texte: "1 tour" },
-            { icone: Sparkles, texte: "Immédiat" },
+            { icone: Flocon, texte: "Immédiat" },
           ].map(({ icone: Icone, texte }) => (
             <div
               key={texte}

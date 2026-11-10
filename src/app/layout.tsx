@@ -8,22 +8,22 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: {
-    default: `${boutique.nom} — Roue de la Fortune`,
+    default: `${boutique.nom} — Roue de Noël`,
     template: `%s · ${boutique.nom}`,
   },
   description:
-    "Tournez la roue et gagnez des cadeaux à retirer en boutique. Une participation par numéro WhatsApp.",
-  applicationName: "Roue de la Fortune",
+    "La roue de Noël : tournez, gagnez un cadeau et retirez-le en boutique. Une participation par numéro WhatsApp.",
+  applicationName: "Roue de Noël",
   manifest: "/manifest.webmanifest",
   appleWebApp: {
     capable: true,
-    title: "Roue de la Fortune",
+    title: "Roue de Noël",
     statusBarStyle: "black-translucent",
   },
   formatDetection: { telephone: false },
   openGraph: {
-    title: `${boutique.nom} — Roue de la Fortune`,
-    description: "Tournez la roue, gagnez un cadeau, passez en boutique !",
+    title: `${boutique.nom} — Roue de Noël`,
+    description: "Tournez la roue de Noël, gagnez un cadeau, passez en boutique !",
     type: "website",
     locale: "fr_BJ",
   },
@@ -35,7 +35,7 @@ export const viewport: Viewport = {
   initialScale: 1,
   maximumScale: 1,
   userScalable: false,
-  themeColor: "#0a0908",
+  themeColor: "#0b2018",
   colorScheme: "dark",
 };
 

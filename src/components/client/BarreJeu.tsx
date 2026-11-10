@@ -3,6 +3,8 @@
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
 
+import { Flocon, Guirlande, Houx, Sapin } from "@/components/client/Ornements";
+
 /**
  * En-tête des pages client.
  *
@@ -22,22 +24,28 @@ export function BarreJeu({ nom }: { nom: string }) {
   if (enJeu) return null;
 
   return (
-    <header className="flex items-center justify-between py-3">
-      <div className="flex items-center gap-2.5">
-        <PastilleRoue />
-        <div className="leading-tight">
-          <p className="font-titre text-[12px] font-semibold tracking-[0.14em] text-or-clair uppercase">
-            {nom}
-          </p>
-          <p className="text-[9px] tracking-[0.2em] text-cendre/60 uppercase">
-            Roue de la fortune
-          </p>
+    <div className="pt-1.5">
+      {/* Guirlande : le seul ornement toujours en haut, quelle que soit la page. */}
+      <Guirlande className="h-3" />
+      <header className="flex items-center justify-between py-2">
+        <div className="flex items-center gap-2.5">
+          <PastilleRoue />
+          <div className="leading-tight">
+            <p className="font-titre text-[12px] font-semibold tracking-[0.14em] text-or-clair uppercase">
+              {nom}
+            </p>
+            <p className="flex items-center gap-1 text-[9px] tracking-[0.2em] text-givre/70 uppercase">
+              <Sapin className="size-2.5" />
+              Roue de Noël
+            </p>
+          </div>
         </div>
-      </div>
-      <span className="rounded-full border border-or/25 px-2 py-0.5 text-[9px] tracking-[0.16em] text-cendre/70 uppercase">
-        Bénin
-      </span>
-    </header>
+        <span className="flex items-center gap-1 rounded-full border border-givre/30 bg-sapin-3/40 px-2 py-0.5 text-[9px] tracking-[0.16em] text-givre/80 uppercase">
+          <Houx className="size-2.5" />
+          Bénin
+        </span>
+      </header>
+    </div>
   );
 }
 
@@ -46,7 +54,8 @@ export function PiedJeu({ texte }: { texte: string }) {
   const chemin = usePathname();
   if (chemin === "/roue") return null;
   return (
-    <footer className="mt-4 text-center text-[10px] leading-snug text-cendre/40">
+    <footer className="mt-3 flex items-center justify-center gap-1.5 text-center text-[10px] leading-snug text-cendre/45">
+      <Flocon className="size-2.5 shrink-0" />
       {texte}
     </footer>
   );
@@ -60,7 +69,7 @@ function PastilleRoue() {
       className="animate-scintille block size-7 rounded-full border border-or-clair/70 shadow-[0_0_18px_-4px_rgba(232,198,106,0.85)]"
       style={{
         background:
-          "conic-gradient(#e8c66a 0 45deg, #7c1d2e 45deg 90deg, #e8c66a 90deg 135deg, #1f6f5c 135deg 180deg, #e8c66a 180deg 225deg, #7c1d2e 225deg 270deg, #e8c66a 270deg 315deg, #1f6f5c 315deg 360deg)",
+          "conic-gradient(#e8c66a 0 45deg, #b3121f 45deg 90deg, #16402e 90deg 135deg, #e8c66a 135deg 180deg, #b3121f 180deg 225deg, #16402e 225deg 270deg, #e8c66a 270deg 315deg, #2f7a53 315deg 360deg)",
       }}
     />
   );

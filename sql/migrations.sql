@@ -150,3 +150,38 @@ BEGIN
      WHERE p.id = r.id;
   END IF;
 END $$;
+
+-- ----------------------------------------------------------------------------
+--  M3. Cadeaux de démonstration aux couleurs de Noël
+--
+--  Les couleurs vivent en base (colonne `cadeaux.couleur`) : changer la palette
+--  dans `seed.sql` ne suffit pas pour une boutique déjà ouverte. On ne touche
+--  QU'AUX lignes encore sur la couleur d'origine du modèle, et seulement si
+--  l'exploitant ne l'a pas déjà personnalisée : une couleur choisie dans
+--  l'administration n'est jamais écrasée.
+-- ----------------------------------------------------------------------------
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns
+     WHERE table_schema = 'public' AND table_name = 'cadeaux'
+       AND column_name = 'couleur'
+  ) THEN
+    UPDATE cadeaux SET couleur = '#D4A017', updated_at = now()
+     WHERE nom = 'Bon d''achat 5 000 FCFA' AND couleur IN ('#C9A227');
+    UPDATE cadeaux SET couleur = '#B3121F', updated_at = now()
+     WHERE nom = 'Casquette boutique' AND couleur IN ('#8B1E3F');
+    UPDATE cadeaux SET couleur = '#1F7A50', updated_at = now()
+     WHERE nom = 'Sac de courses' AND couleur IN ('#1F6F5C');
+    UPDATE cadeaux SET couleur = '#8E0C17', updated_at = now()
+     WHERE nom = 'Crème hydratante' AND couleur IN ('#B4552A');
+    UPDATE cadeaux SET couleur = '#2F7A53', updated_at = now()
+     WHERE nom = 'Stylo publicitaire' AND couleur IN ('#3A4A7A');
+    UPDATE cadeaux SET couleur = '#A9822B', updated_at = now()
+     WHERE nom = 'Échantillon parfum' AND couleur IN ('#6B4A7A');
+    UPDATE cadeaux SET couleur = '#C41E2A', updated_at = now()
+     WHERE nom = 'Réduction 10 %' AND couleur IN ('#0F6B6B');
+    UPDATE cadeaux SET couleur = '#16402E', updated_at = now()
+     WHERE nom = 'Bon café offert' AND couleur IN ('#4A3F35');
+  END IF;
+END $$;

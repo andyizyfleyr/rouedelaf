@@ -25,8 +25,23 @@
   --color-bordeaux-clair: #a52a3f;
   --color-emeraude: #1f6f5c;
 
-  --color-creme: #f6efe1;
-  --color-cendre: #b9b0a2;
+  --color-creme: #f8f3e7;
+  --color-cendre: #bcb3a5;
+
+  /* — Thème de Noël ——————————————————————————————————————————
+     Sapin profond, rouge de baie, or des guirlandes, neige. Ces
+     teintes remplacent le « velours noir » : le jeu se lit comme
+     une vitrine de fête, sans perdre l'aspect bijou doré. */
+  --color-sapin: #0b2018;
+  --color-sapin-2: #0f2c20;
+  --color-sapin-3: #16402e;
+  --color-sapin-clair: #2f7a53;
+  --color-rouge-noel: #b3121f;
+  --color-rouge-noel-clair: #d9263a;
+  --color-rouge-noel-fonce: #7a0b14;
+  --color-neige: #eaf4f1;
+  --color-givre: #a9d8c9;
+  --color-guirlande: #ffd977;
 
   /* Polices */
   --font-titre: "Cinzel", "Times New Roman", serif;
@@ -94,14 +109,38 @@ body {
   overscroll-behavior-y: none;
 }
 
-/* Fond « velours » : dégradés radiaux + grain léger */
+/* Fond de Noël : nuits de sapin, halos de guirlande, un souffle de rouge. */
 .fond-velours {
   position: relative;
   background-image:
-    radial-gradient(1200px 700px at 50% -10%, rgba(232, 198, 106, 0.16), transparent 62%),
-    radial-gradient(900px 600px at 110% 10%, rgba(124, 29, 46, 0.24), transparent 60%),
-    radial-gradient(800px 700px at -10% 100%, rgba(31, 111, 92, 0.16), transparent 62%),
-    linear-gradient(180deg, #0a0908 0%, #0e0c0b 45%, #080706 100%);
+    radial-gradient(1200px 700px at 50% -10%, rgba(255, 217, 119, 0.20), transparent 62%),
+    radial-gradient(900px 620px at 108% 8%, rgba(179, 18, 31, 0.28), transparent 60%),
+    radial-gradient(820px 720px at -8% 100%, rgba(47, 122, 83, 0.30), transparent 64%),
+    linear-gradient(180deg, #081711 0%, #0b2018 44%, #06120d 100%);
+}
+
+/* Neige qui tombe : deux nappes de points, très lentes, purement décoratives.
+   `pointer-events: none` + `aria-hidden` (voir Ornements) : jamais d'interception. */
+.fond-velours::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.5;
+  background-image:
+    radial-gradient(1.6px 1.6px at 12% 18%, rgba(234, 244, 241, 0.9), transparent),
+    radial-gradient(1.4px 1.4px at 28% 62%, rgba(234, 244, 241, 0.75), transparent),
+    radial-gradient(2px 2px at 44% 34%, rgba(234, 244, 241, 0.85), transparent),
+    radial-gradient(1.5px 1.5px at 61% 78%, rgba(234, 244, 241, 0.7), transparent),
+    radial-gradient(1.8px 1.8px at 76% 22%, rgba(234, 244, 241, 0.8), transparent),
+    radial-gradient(1.3px 1.3px at 88% 56%, rgba(234, 244, 241, 0.7), transparent),
+    radial-gradient(1.7px 1.7px at 8% 84%, rgba(234, 244, 241, 0.65), transparent),
+    radial-gradient(1.4px 1.4px at 34% 8%, rgba(234, 244, 241, 0.7), transparent),
+    radial-gradient(1.9px 1.9px at 54% 92%, rgba(234, 244, 241, 0.6), transparent),
+    radial-gradient(1.5px 1.5px at 94% 88%, rgba(234, 244, 241, 0.65), transparent);
+  background-size: 420px 420px;
+  background-repeat: repeat;
+  animation: neige 46s linear infinite;
 }
 
 .fond-velours::after {
@@ -111,6 +150,11 @@ body {
   pointer-events: none;
   opacity: 0.055;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)' opacity='0.7'/%3E%3C/svg%3E");
+}
+
+@keyframes neige {
+  from { background-position: 0 0; }
+  to { background-position: 0 420px; }
 }
 
 /* Texte doré */
@@ -140,8 +184,8 @@ body {
   position: relative;
   border-radius: var(--radius-carte);
   background:
-    linear-gradient(160deg, rgba(38, 32, 27, 0.92), rgba(16, 14, 13, 0.94));
-  border: 1px solid rgba(232, 198, 106, 0.22);
+    linear-gradient(160deg, rgba(18, 48, 35, 0.93), rgba(7, 22, 16, 0.95));
+  border: 1px solid rgba(232, 198, 106, 0.26);
   box-shadow: var(--shadow-carte), inset 0 1px 0 rgba(255, 243, 196, 0.08);
   backdrop-filter: blur(14px);
 }
@@ -152,7 +196,7 @@ body {
   inset: -1px;
   border-radius: inherit;
   padding: 1px;
-  background: linear-gradient(150deg, rgba(255, 243, 196, 0.55), rgba(232, 198, 106, 0.05) 42%, rgba(124, 29, 46, 0.35));
+  background: linear-gradient(150deg, rgba(255, 243, 196, 0.6), rgba(232, 198, 106, 0.06) 40%, rgba(179, 18, 31, 0.45));
   -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
   mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
   -webkit-mask-composite: xor;
@@ -181,7 +225,7 @@ body {
   overflow: hidden;
 }
 .btn-or:active { transform: scale(0.975); filter: brightness(0.96); }
-.btn-or:disabled { opacity: 0.55; filter: grayscale(0.25); }
+.btn-or:disabled { opacity: 0.72; filter: saturate(0.85) brightness(0.95); }
 .btn-or::after {
   content: "";
   position: absolute;
@@ -211,12 +255,29 @@ body {
 }
 .btn-fantome:hover { background: rgba(255, 243, 196, 0.09); border-color: rgba(232, 198, 106, 0.55); }
 
+/* Bouton « rouge de Noël » : action secondaire forte (partager, cadeaux). */
+.btn-noel {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border-radius: 999px;
+  padding: 0.75rem 1.25rem;
+  font-weight: 700;
+  color: #fff5ec;
+  background-image: linear-gradient(180deg, #d9263a 0%, #b3121f 52%, #8e0c17 100%);
+  border: 1px solid rgba(255, 217, 119, 0.35);
+  box-shadow: 0 10px 26px -12px rgba(179, 18, 31, 0.85), inset 0 1px 0 rgba(255, 255, 255, 0.22);
+  transition: transform 0.16s ease, filter 0.16s ease;
+}
+.btn-noel:active { transform: scale(0.975); filter: brightness(0.96); }
+
 /* Champs de formulaire */
 .champ {
   width: 100%;
   border-radius: 0.9rem;
   border: 1px solid rgba(232, 198, 106, 0.22);
-  background: rgba(10, 9, 8, 0.72);
+  background: rgba(6, 20, 14, 0.78);
   padding: 0.9rem 1rem;
   color: var(--color-creme);
   font-size: 1rem;
@@ -245,9 +306,27 @@ body {
   background: linear-gradient(90deg, transparent, rgba(232, 198, 106, 0.6), transparent);
 }
 
+/* Guirlande : le filet de sapin illuminé (séparateur de Noël). */
+.guirlande {
+  height: 2px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, transparent, rgba(179, 18, 31, 0.75), rgba(255, 217, 119, 0.85), rgba(47, 122, 83, 0.8), transparent);
+  box-shadow: 0 0 14px -2px rgba(255, 217, 119, 0.55);
+}
+
 /* Grain de sécurité : masque les débordements de la roue */
 .roue-masque {
   filter: drop-shadow(0 30px 60px rgba(0, 0, 0, 0.75));
+}
+
+/* La roue de Noël : les cases perdantes prennent un rouge de baie très sombre,
+   pour rester lisibles sans casser la triade or / rouge / sapin. */
+@media (prefers-reduced-motion: no-preference) {
+  .roue-masque { animation: flotteDouce 9s ease-in-out infinite; }
+}
+@keyframes flotteDouce {
+  0%, 100% { transform: translateY(-2px); }
+  50% { transform: translateY(2px); }
 }
 
 /* Respect des préférences d'accessibilité */
@@ -262,11 +341,11 @@ body {
 /* Scrollbar discrète (desktop) */
 @media (min-width: 1024px) {
   ::-webkit-scrollbar { width: 10px; height: 10px; }
-  ::-webkit-scrollbar-track { background: #0a0908; }
+  ::-webkit-scrollbar-track { background: #081711; }
   ::-webkit-scrollbar-thumb {
     background: linear-gradient(180deg, #6b5320, #a9822b);
     border-radius: 999px;
-    border: 2px solid #0a0908;
+    border: 2px solid #081711;
   }
 }
 

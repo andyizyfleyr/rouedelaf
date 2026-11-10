@@ -13,7 +13,7 @@ import QRCode from "qrcode";
 
 export const metadata = {
   title: "La roue",
-  description: "Tournez la roue et découvrez votre cadeau.",
+  description: "Tournez la roue de Noël et découvrez votre cadeau.",
 };
 
 /**

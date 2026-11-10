@@ -20,6 +20,13 @@ const nextConfig: NextConfig = {
     ],
   },
 
+  // Les fichiers SQL sont lus à l'exécution par /api/admin/init (initialisation
+  // de la base depuis Vercel). Sans cette ligne, Vercel n'embarque que les
+  // modules et `fs` ne trouverait pas sql/schema.sql dans la fonction.
+  outputFileTracingIncludes: {
+    "/api/admin/init": ["./sql/**/*.sql"],
+  },
+
   // Les paquets serveur qui ne doivent jamais finir dans le bundle navigateur.
   serverExternalPackages: ["@neondatabase/serverless"],
 

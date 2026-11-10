@@ -48,10 +48,14 @@ const neonHttp = EST_NEON ? neon(CHAINE) : null;
 /*  Pilote B — pg (pool TCP)                                                   */
 /* -------------------------------------------------------------------------- */
 
-const globalPourPool = globalThis as unknown as { __rouePool?: Pool };
+type CachePool = { pool: Pool; cle: string };
+const globalPourPool = globalThis as unknown as { __rouePool?: CachePool };
 
 function obtenirPool(): Pool {
-  if (globalPourPool.__rouePool) return globalPourPool.__rouePool;
+  // Le pool est mémorisé par processus, mais UNIQUEMENT pour la même chaîne de
+  // connexion : si l'URL change (redéploiement, rotation du mot de passe), on
+  // recrée le pool au lieu de réutiliser d'anciennes connexions mortes.
+  if (globalPourPool.__rouePool?.cle === CHAINE) return globalPourPool.__rouePool.pool;
 
   // `sslmode=require` est dans l'URL (voir .env.example). On force SSL dès que
   // l'hôte n'est pas local, ce qui couvre Neon, Supabase et la plupart des
@@ -66,8 +70,9 @@ function obtenirPool(): Pool {
     ssl: estLocal ? undefined : { rejectUnauthorized: false },
   });
 
-  // Un pool qui reste ouvert en développement (rechargement à chaud).
-  globalPourPool.__rouePool = pool;
+  // Un pool qui reste ouvert en développement (rechargement à chaud), et qui
+  // survit à une invocation chaude en production.
+  globalPourPool.__rouePool = { pool, cle: CHAINE };
   return pool;
 }
 

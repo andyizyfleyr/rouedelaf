@@ -230,9 +230,29 @@ async function detecter(url: string): Promise<Cadre | null> {
   const bw = Math.min(largeur - bx, bwEch / k);
   const bh = Math.min(hauteur - by, bhEch / k);
 
-  // Le cadrage ne retire presque rien : inutile de compliquer l'affichage.
+  /*
+   * Le cadrage ne retire presque rien → on renvoie quand même la MESURE, avec
+   * l'image entière comme boîte. Ce n'est pas un détail : la roue a besoin de
+   * connaître les DIMENSIONS de la photo pour lui donner le bon ratio.
+   *
+   * C'est exactement le cas des images déjà détourées côté serveur (PNG
+   * transparents, rognés sur le produit) : leur boîte englobante EST l'image.
+   * Renvoyer `null` ici les faisait retomber sur un carré générique, et un
+   * pH-mètre vertical dans un carré devenait un fil minuscule, aussitôt rogné
+   * par le camembert. Le produit disparaissait de sa case.
+   */
   const gain = 1 - (bw / largeur) * (bh / hauteur);
-  if (gain < GAIN_MIN) return null;
+  if (gain < GAIN_MIN) {
+    return {
+      bx: 0,
+      by: 0,
+      bw: largeur,
+      bh: hauteur,
+      largeur,
+      hauteur,
+      transparent,
+    };
+  }
 
   return { bx, by, bw, bh, largeur, hauteur, transparent };
 }

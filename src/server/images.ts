@@ -3,6 +3,7 @@ import "server-only";
 import { randomUUID } from "node:crypto";
 
 import { sql } from "@/lib/db";
+import { detourer } from "@/server/detourage";
 
 /**
  * Photos de cadeaux, stockées DANS LA BASE.
@@ -37,7 +38,18 @@ export function extensionImage(type: string): string | null {
   return TYPES_IMAGE[type] ?? null;
 }
 
-/** Enregistre les octets et renvoie l'URL servie par /api/image/[nom]. */
+/**
+ * Enregistre les octets et renvoie l'URL servie par /api/image/[nom].
+ *
+ * Détourage automatique : une photo « packshot » (produit sur fond uni) est
+ * convertie en PNG transparent rogné sur le produit. C'est ce qui permet aux
+ * cases de la roue d'afficher l'objet lui-même, sans carte blanche autour.
+ *
+ * Si le détourage n'est pas pertinent (photo d'ambiance, fond non uni,
+ * produit collé au bord), on enregistre l'image d'origine : mieux vaut une
+ * photo avec son fond qu'un produit massacré. Le GIF, lui, n'est jamais
+ * détouré (animation).
+ */
 export async function enregistrerImage(
   donnees: Buffer,
   type: string,
@@ -51,11 +63,24 @@ export async function enregistrerImage(
     return { erreur: "Image trop lourde : 3 Mo maximum." };
   }
 
-  const nom = `${randomUUID()}.${extension}`;
+  let octets = donnees;
+  let format = extension;
+  let mime = type;
+
+  if (type !== "image/gif") {
+    const detoure = await detourer(donnees);
+    if (detoure) {
+      octets = detoure.png;
+      format = "png";
+      mime = "image/png";
+    }
+  }
+
+  const nom = `${randomUUID()}.${format}`;
   try {
     await sql`
       INSERT INTO images_cadeaux (nom, type, donnees, taille)
-      VALUES (${nom}, ${type}, ${donnees}, ${donnees.length})
+      VALUES (${nom}, ${mime}, ${octets}, ${octets.length})
     `;
     return { url: `/api/image/${nom}` };
   } catch (e) {

@@ -357,6 +357,17 @@ export function Roue({
             <stop offset="100%" stopColor="rgba(255,255,255,0.10)" />
           </linearGradient>
 
+          {/* Ombre diffuse sous les produits détourés (voir `Vignette`). */}
+          <filter
+            id="flouOmbre"
+            x="-100%"
+            y="-300%"
+            width="300%"
+            height="700%"
+          >
+            <feGaussianBlur stdDeviation="2.2" />
+          </filter>
+
           <filter id="ombreDoigt" x="-80%" y="-80%" width="260%" height="260%">
             <feDropShadow
               dx="0"
@@ -847,8 +858,13 @@ function Vignette({
   const demiAngle = ((secteur.angle - 2 * marge) * Math.PI) / 360;
   const tanA = Math.tan(demiAngle);
 
-  // Ratio du produit : celui de sa boîte englobante. Sans mesure (photo
-  // d'ambiance, ou mesure impossible), on reste sur un carré.
+  /*
+   * Ratio du produit : celui de sa boîte englobante.
+   *
+   * Sans mesure — canvas impossible, image d'un autre domaine refusée par le
+   * CORS — on garde un carré. Ce n'est qu'un secours : la mesure aboutit sur
+   * toutes les photos servies par /api/image (même origine).
+   */
   const ratio = cadre ? cadre.bw / cadre.bh : 1;
   let hauteur = (r1 * tanA) / (ratio / 2 + tanA);
   hauteur = Math.min(hauteur, r1 - r0);
@@ -862,7 +878,6 @@ function Vignette({
   }
 
   const x0 = CENTRE - largeur / 2;
-  const idCarte = `carte-${secteur.cle}`;
 
   return (
     <g>
@@ -870,87 +885,53 @@ function Vignette({
         <clipPath id={idClip}>
           <path d={chemin} />
         </clipPath>
-        <clipPath id={idCarte}>
-          <rect
-            x={x0}
-            y={CENTRE - r1}
-            width={largeur}
-            height={hauteur}
-            rx={4}
-            ry={4}
-          />
-        </clipPath>
-        {/* Fond de la carte.
-            • Photo opaque : carte CRÈME — le produit est détouré sur du blanc,
-              il disparaîtrait sur le velours sombre de la case.
-            • PNG transparent : carte sombre vernie — un produit clair (inox,
-              verre, plastique blanc) ressort mieux, rendu « vitrine ». */}
-        <linearGradient
-          id={`fond-${secteur.cle}`}
-          x1="0"
-          y1="0"
-          x2="0.35"
-          y2="1"
-        >
-          {cadre?.transparent ? (
-            <>
-              <stop offset="0" stopColor="#16302a" />
-              <stop offset="1" stopColor="#07130f" />
-            </>
-          ) : (
-            <>
-              <stop offset="0" stopColor="#FFFDF6" />
-              <stop offset="1" stopColor="#F0E6CC" />
-            </>
-          )}
-        </linearGradient>
       </defs>
 
       <g clipPath={`url(#${idClip})`}>
         {/* Rotation : le secteur pointe vers le haut du repère. */}
         <g transform={`rotate(${secteur.milieu} ${CENTRE} ${CENTRE})`}>
-          {/* Carte du produit */}
-          <rect
-            x={x0}
-            y={CENTRE - r1}
-            width={largeur}
-            height={hauteur}
-            rx={4}
-            ry={4}
-            fill={`url(#fond-${secteur.cle})`}
-            stroke="rgba(212,175,55,0.75)"
-            strokeWidth="0.9"
+          {/* Ombre portée : une lueur sombre diffuse sous le produit, pour que
+              l'objet « pose » sur le velours au lieu de flotter. Très discrète
+              — elle ne doit jamais se lire comme un cadre. */}
+          <ellipse
+            cx={CENTRE}
+            cy={CENTRE - r1 + hauteur * 0.97}
+            rx={largeur * 0.3}
+            ry={Math.max(1.4, hauteur * 0.02)}
+            fill="rgba(0,0,0,0.6)"
+            filter="url(#flouOmbre)"
+            opacity="0.35"
           />
 
-          {/* La photo, recadrée sur le produit et contenue dans la carte.
-              ⚠️ Le clip est porté par ce groupe ENTIER : `ImageCadree` dessine
-              l'image à sa taille d'origine puis la translate/échelle, donc sans
-              ce clip elle déborderait de la carte (et de la roue). */}
-          <g clipPath={`url(#${idCarte})`}>
-            {cadre ? (
-              <ImageCadree
-                href={secteur.image ?? ""}
-                cadre={cadre}
-                x={x0}
-                y={CENTRE - r1}
-                largeur={largeur}
-                hauteur={hauteur}
-                onCasse={onCasse}
-              />
-            ) : (
-              <image
-                href={secteur.image ?? undefined}
-                x={x0}
-                y={CENTRE - r1}
-                width={largeur}
-                height={hauteur}
-                preserveAspectRatio="xMidYMid meet"
-                style={{ pointerEvents: "none" }}
-                onError={onCasse}
-              />
-            )}
-          </g>
+          {/* Le produit, détouré (PNG transparent) et posé à même la case.
+              ⚠️ Aucun clip ici : le groupe parent `clipPath={url(#idClip)}` s'en
+              charge déjà, et il est appliqué dans le repère NON tourné.
+              Un second clip posé ici (dans le repère tourné) découpait un
+              secteur décalé et faisait disparaître le produit. */}
+          {cadre ? (
+            <ImageCadree
+              href={secteur.image ?? ""}
+              cadre={cadre}
+              x={x0}
+              y={CENTRE - r1}
+              largeur={largeur}
+              hauteur={hauteur}
+              onCasse={onCasse}
+            />
+          ) : (
+            <image
+              href={secteur.image ?? undefined}
+              x={x0}
+              y={CENTRE - r1}
+              width={largeur}
+              height={hauteur}
+              preserveAspectRatio="xMidYMid meet"
+              style={{ pointerEvents: "none" }}
+              onError={onCasse}
+            />
+          )}
         </g>
+
         {/* Voile léger : garde les cloisons et l'aiguille lisibles même sur une
             photo très claire. Volontairement faible — le produit doit rester
             net, c'est lui qu'on doit reconnaître. */}

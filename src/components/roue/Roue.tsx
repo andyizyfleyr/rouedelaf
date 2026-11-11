@@ -4,6 +4,7 @@ import { animate, motion, useMotionValue } from "framer-motion";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { IconeCadeau } from "@/components/roue/IconeCadeau";
+import { cadreProduit, type Cadre } from "@/lib/recadrage";
 import { angleCible, nuancer } from "@/lib/roue";
 import { jouerTic } from "@/lib/sons";
 import type { CadeauRoue } from "@/lib/types";
@@ -161,9 +162,11 @@ export function Roue({
         // Deux cases de même teinte côte à côte se lisaient comme UNE seule
         // case deux fois plus large : l'exploitant croyait à un bug. On éclaire
         // le bord mitoyen, et le liseré or fait la séparation.
-        memeGauche: i > 0 && normaliser(cases[i - 1].couleur) === normaliser(c.couleur),
+        memeGauche:
+          i > 0 && normaliser(cases[i - 1].couleur) === normaliser(c.couleur),
         memeDroite:
-          i < cases.length - 1 && normaliser(cases[i + 1]?.couleur) === normaliser(c.couleur),
+          i < cases.length - 1 &&
+          normaliser(cases[i + 1]?.couleur) === normaliser(c.couleur),
       };
     });
   }, [cases]);
@@ -185,7 +188,8 @@ export function Roue({
 
     const depart = rotationRef.current;
     const base = depart - (depart % 360);
-    const arrivee = base + angleCible(caseCible, cases.length, tours, deriveRef.current);
+    const arrivee =
+      base + angleCible(caseCible, cases.length, tours, deriveRef.current);
 
     let dernierIndex = -1;
     let intervalle = 1000; // ms entre deux cloisons franchie
@@ -354,11 +358,23 @@ export function Roue({
           </linearGradient>
 
           <filter id="ombreDoigt" x="-80%" y="-80%" width="260%" height="260%">
-            <feDropShadow dx="0" dy="4" stdDeviation="3.2" floodColor="#000" floodOpacity="0.7" />
+            <feDropShadow
+              dx="0"
+              dy="4"
+              stdDeviation="3.2"
+              floodColor="#000"
+              floodOpacity="0.7"
+            />
           </filter>
 
           {/* Éclat des ampoules */}
-          <filter id="haloAmpoule" x="-200%" y="-200%" width="500%" height="500%">
+          <filter
+            id="haloAmpoule"
+            x="-200%"
+            y="-200%"
+            width="500%"
+            height="500%"
+          >
             <feGaussianBlur stdDeviation="2.6" result="flou" />
             <feMerge>
               <feMergeNode in="flou" />
@@ -382,9 +398,23 @@ export function Roue({
 
         {/* ── Jante extérieure ─────────────────────────────────────────── */}
         <circle cx={CENTRE} cy={CENTRE} r={RAYON} fill="url(#jante)" />
-        <circle cx={CENTRE} cy={CENTRE} r={RAYON - 3} fill="none" stroke="rgba(0,0,0,0.45)" strokeWidth="1.2" />
+        <circle
+          cx={CENTRE}
+          cy={CENTRE}
+          r={RAYON - 3}
+          fill="none"
+          stroke="rgba(0,0,0,0.45)"
+          strokeWidth="1.2"
+        />
         <circle cx={CENTRE} cy={CENTRE} r={RAYON - 9} fill="#0a0a0a" />
-        <circle cx={CENTRE} cy={CENTRE} r={RAYON - 9} fill="none" stroke="rgba(255,246,210,0.28)" strokeWidth="0.8" />
+        <circle
+          cx={CENTRE}
+          cy={CENTRE}
+          r={RAYON - 9}
+          fill="none"
+          stroke="rgba(255,246,210,0.28)"
+          strokeWidth="0.8"
+        />
 
         {/* ── Partie tournante ─────────────────────────────────────────── */}
         <motion.g
@@ -397,7 +427,12 @@ export function Roue({
           {/* Secteurs rayés */}
           {secteurs.map((s) => (
             <g key={s.cle}>
-              <path d={s.chemin} fill={`url(#g-${s.cle})`} stroke="rgba(0,0,0,0.28)" strokeWidth="0.7" />
+              <path
+                d={s.chemin}
+                fill={`url(#g-${s.cle})`}
+                stroke="rgba(0,0,0,0.28)"
+                strokeWidth="0.7"
+              />
               {/* Voile laqué : un dégradé clair en haut du secteur seulement —
                   deux tons suffisent, au-delà la roue devient illisible. */}
               <path d={s.chemin} fill="url(#voile)" opacity="0.5" />
@@ -483,7 +518,9 @@ export function Roue({
                   vague qui fait le tour de la jante sans jamais clignoter.
                 */}
                 <g
-                  className={enMouvement ? "ampoule-roue ampoule-rapide" : "ampoule-roue"}
+                  className={
+                    enMouvement ? "ampoule-roue ampoule-rapide" : "ampoule-roue"
+                  }
                   style={{ animationDelay: `${(i % 3) * 0.32}s` }}
                 >
                   <circle
@@ -538,7 +575,12 @@ export function Roue({
 
           {/* Reflet vitreux */}
           <circle cx={CENTRE} cy={CENTRE} r={RAYON - 10} fill="url(#vitre)" />
-          <circle cx={CENTRE} cy={CENTRE} r={RAYON - 10} fill="url(#vignette)" />
+          <circle
+            cx={CENTRE}
+            cy={CENTRE}
+            r={RAYON - 10}
+            fill="url(#vignette)"
+          />
         </motion.g>
 
         {/* ── Doigt (aiguille) : ressort qui claque ────────────────────── */}
@@ -548,7 +590,12 @@ export function Roue({
             style={{ transformOrigin: `${CENTRE}px ${CENTRE - 14}px` }}
             initial={{ rotate: enMouvement ? 13 : 0 }}
             animate={{ rotate: 0 }}
-            transition={{ type: "spring", stiffness: 700, damping: 13, mass: 0.35 }}
+            transition={{
+              type: "spring",
+              stiffness: 700,
+              damping: 13,
+              mass: 0.35,
+            }}
           >
             {/* Corps du doigt */}
             <path
@@ -623,10 +670,23 @@ export function Roue({
         >
           <circle cx={CENTRE} cy={CENTRE} r={40} fill="url(#jante)" />
           <circle cx={CENTRE} cy={CENTRE} r={34} fill="url(#moyeu)" />
-          <circle cx={CENTRE} cy={CENTRE} r={34} fill="none" stroke="rgba(93,68,16,0.6)" strokeWidth="1" />
+          <circle
+            cx={CENTRE}
+            cy={CENTRE}
+            r={34}
+            fill="none"
+            stroke="rgba(93,68,16,0.6)"
+            strokeWidth="1"
+          />
 
           {/* Reflet du verre sur le moyeu */}
-          <ellipse cx={CENTRE - 10} cy={CENTRE - 12} rx={11} ry={6} fill="rgba(255,255,255,0.5)" />
+          <ellipse
+            cx={CENTRE - 10}
+            cy={CENTRE - 12}
+            rx={11}
+            ry={6}
+            fill="rgba(255,255,255,0.5)"
+          />
 
           <text
             x={CENTRE}
@@ -643,7 +703,6 @@ export function Roue({
           </text>
         </g>
       </svg>
-
     </div>
   );
 }
@@ -669,27 +728,98 @@ export function nomCourt(nom: string): string {
   }
   const mots = nettoye.split(/\s+/).filter((m) => m.length > 2);
   if (mots.length === 0) return nettoye;
-  const vide = new Set(["de", "du", "des", "la", "le", "les", "un", "une", "aux", "a", "au", "et"]);
+  const vide = new Set([
+    "de",
+    "du",
+    "des",
+    "la",
+    "le",
+    "les",
+    "un",
+    "une",
+    "aux",
+    "a",
+    "au",
+    "et",
+  ]);
   const porteurs = mots.filter((m) => !vide.has(m.toLowerCase()));
   // Le mot le plus long est en général le plus identifiable.
-  return (porteurs.length ? porteurs : mots).sort((a, b) => b.length - a.length)[0];
+  return (porteurs.length ? porteurs : mots).sort(
+    (a, b) => b.length - a.length,
+  )[0];
 }
 
 /**
- * Case IMAGE : la photo du cadeau remplit tout le secteur, et rien d'autre.
+ * Case IMAGE : la photo du cadeau, et rien d'autre.
  *
- * Règle demandée par l'exploitant — « soit du texte, soit l'image » : une case
- * affiche l'un OU l'autre, jamais un mélange. Une case avec photo n'a donc ni
- * libellé incurvé, ni petite icône, ni fond de couleur visible : le nom du lot
- * reste accessible juste en dessous de la roue (l'étiquette qui suit le doigt)
- * et dans la popup de résultat.
+ * ══════════════════════════════════════════════════════════════════════════
+ *  POURQUOI LE PRODUIT ÉTAIT « COINCÉ »
+ * ══════════════════════════════════════════════════════════════════════════
+ * La version précédente posait la photo sur un CARRÉ calé sur la largeur du
+ * secteur, en `preserveAspectRatio="slice"` (l'équivalent d'un `cover` en
+ * CSS). Deux défauts se cumulaient :
  *
- * Mise en œuvre : le secteur est ramené à la verticale par une rotation, puis
- * une image rectangulaire assez large pour couvrir l'ouverture angulaire y est
- * posée (`preserveAspectRatio: slice`). Le `clipPath` en camembert garantit que
- * la photo ne déborde jamais sur la case voisine.
+ *   1. `slice` remplit le carré en rognant — comme un `cover`, il ZOOME sur
+ *      le centre de la photo. Sur une photo produit carrée avec de grandes
+ *      marges blanches, le produit se retrouvait agrandi au-delà de la case
+ *      et coupé en haut et en bas.
+ *   2. La case n'est pas un carré : c'est un CAMEMBERT, large au bord et
+ *      pointu au moyeu. Un carré posé au milieu déborde du côté du moyeu, et
+ *      la partie qui dépasse est rognée par le `clipPath`. On ne voyait donc
+ *      qu'un fragment du produit.
+ *
+ * ══════════════════════════════════════════════════════════════════════════
+ *  LA SOLUTION
+ * ══════════════════════════════════════════════════════════════════════════
+ *  • Un RECTANGLE RADIAL, pas un carré : sa hauteur suit l'axe du secteur (le
+ *    côté long, qui va du moyeu à la jante) et sa largeur est la largeur du
+ *    camembert à l'endroit le plus étroit — donc le rectangle est ENTIÈREMENT
+ *    contenu dans la case, sans aucun rognage.
+ *  • `meet` (« contain ») et non `slice` : la photo entière tient dans le
+ *    rectangle, jamais de zoom qui coupe.
+ *  • Les marges blanches de la photo sont détourées au préalable (voir
+ *    `src/lib/recadrage.ts`), et le rectangle prend le RATIO DU PRODUIT : une
+ *    grande photo carrée avec beaucoup de blanc donne donc un produit qui
+ *    remplit sa case au lieu de flotter minuscule au milieu.
+ *  • Le produit est posé sur une petite CARTE crème bordée d'or : un produit
+ *    détouré sur blanc ne se distingue plus du fond de la case, et une photo
+ *    transparente ressort proprement.
+ *
+ * Le nom du lot, lui, reste dans la popup de résultat : sur un secteur de
+ * 45°, un libellé sous la photo serait illisible.
  */
-function Vignette({ secteur, onCasse }: { secteur: Secteur; onCasse: () => void }) {
+function Vignette({
+  secteur,
+  onCasse,
+}: {
+  secteur: Secteur;
+  onCasse: () => void;
+}) {
+  /**
+   * Cadrage du produit (marges blanches retirées). On mémorise l'URL mesurée
+   * avec le résultat : si l'exploitant remplace la photo d'un lot qui garde le
+   * même identifiant, la clé React ne change pas et le composant n'est pas
+   * remonté — sans cette comparaison, l'ancien cadrage resterait affiché.
+   */
+  const [mesureUrl, setMesureUrl] = useState<{
+    url: string;
+    valeur: Cadre | null;
+  } | null>(null);
+  const cadre =
+    mesureUrl && mesureUrl.url === secteur.image ? mesureUrl.valeur : null;
+
+  useEffect(() => {
+    const url = secteur.image;
+    if (!url) return;
+    let vivant = true;
+    cadreProduit(url).then((valeur) => {
+      if (vivant) setMesureUrl({ url, valeur });
+    });
+    return () => {
+      vivant = false;
+    };
+  }, [secteur.image]);
+
   const rayonExt = RAYON - 10;
   const marge = 0.9; // degrés : laisse respirer la cloison entre deux cases
   const debut = secteur.debut + marge;
@@ -697,9 +827,42 @@ function Vignette({ secteur, onCasse }: { secteur: Secteur; onCasse: () => void 
   const chemin = secteurPath(CENTRE, CENTRE, rayonExt, debut, fin);
   const idClip = `clip-${secteur.cle}`;
 
-  // Largeur nécessaire pour couvrir l'ouverture du secteur (le triangle va en
-  // s'évasant) : la corde au bord extérieur, plus une marge de sécurité.
-  const largeur = 2 * rayonExt * Math.sin((secteur.angle * Math.PI) / 360) * 1.12;
+  /**
+   * Rectangle radial maximal inscrit dans le camembert.
+   *
+   * Le secteur s'élargit en s'éloignant du centre : son point le plus étroit
+   * est donc son bord INTÉRIEUR. On cale le rectangle dessus (`r0` = rayon du
+   * moyeu + 3 px de respiration) et on pousse son bord extérieur jusqu'à la
+   * jante (`r1`). La largeur vaut alors 2·(r1 − h)·tan(angle/2), ce qui donne,
+   * en résolvant pour un ratio largeur/hauteur = A :
+   *
+   *     h = r1·tan(α) / (A/2 + tan(α))     puis     w = A·h
+   *
+   * Un carré de côté fixe, à l'inverse, était bridé par la largeur du secteur
+   * à mi-rayon : deux fois plus petit, et débordant côté moyeu.
+   */
+  const r0 = 45; // le moyeu (r = 41) masquerait le bas du produit
+  const r1 = rayonExt - 1.5;
+  // Le cône réellement disponible, marge de respiration déduite.
+  const demiAngle = ((secteur.angle - 2 * marge) * Math.PI) / 360;
+  const tanA = Math.tan(demiAngle);
+
+  // Ratio du produit : celui de sa boîte englobante. Sans mesure (photo
+  // d'ambiance, ou mesure impossible), on reste sur un carré.
+  const ratio = cadre ? cadre.bw / cadre.bh : 1;
+  let hauteur = (r1 * tanA) / (ratio / 2 + tanA);
+  hauteur = Math.min(hauteur, r1 - r0);
+  let largeur = ratio * hauteur;
+
+  // Cas dégénéré (ratio extrême, secteur très fin) : on garde une vignette
+  // visible et on laisse le `clipPath` faire le ménage.
+  if (largeur > 2 * (r1 - hauteur) * tanA) {
+    largeur = 2 * (r1 - hauteur) * tanA;
+    hauteur = largeur / ratio;
+  }
+
+  const x0 = CENTRE - largeur / 2;
+  const idCarte = `carte-${secteur.cle}`;
 
   return (
     <g>
@@ -707,32 +870,143 @@ function Vignette({ secteur, onCasse }: { secteur: Secteur; onCasse: () => void 
         <clipPath id={idClip}>
           <path d={chemin} />
         </clipPath>
+        <clipPath id={idCarte}>
+          <rect
+            x={x0}
+            y={CENTRE - r1}
+            width={largeur}
+            height={hauteur}
+            rx={4}
+            ry={4}
+          />
+        </clipPath>
+        {/* Fond de la carte.
+            • Photo opaque : carte CRÈME — le produit est détouré sur du blanc,
+              il disparaîtrait sur le velours sombre de la case.
+            • PNG transparent : carte sombre vernie — un produit clair (inox,
+              verre, plastique blanc) ressort mieux, rendu « vitrine ». */}
+        <linearGradient
+          id={`fond-${secteur.cle}`}
+          x1="0"
+          y1="0"
+          x2="0.35"
+          y2="1"
+        >
+          {cadre?.transparent ? (
+            <>
+              <stop offset="0" stopColor="#16302a" />
+              <stop offset="1" stopColor="#07130f" />
+            </>
+          ) : (
+            <>
+              <stop offset="0" stopColor="#FFFDF6" />
+              <stop offset="1" stopColor="#F0E6CC" />
+            </>
+          )}
+        </linearGradient>
       </defs>
 
       <g clipPath={`url(#${idClip})`}>
-        {/* Rotation : le secteur pointe alors vers le haut du repère, et une
-            simple image verticale le couvre entièrement. */}
+        {/* Rotation : le secteur pointe vers le haut du repère. */}
         <g transform={`rotate(${secteur.milieu} ${CENTRE} ${CENTRE})`}>
-          <image
-            href={secteur.image ?? undefined}
-            x={CENTRE - largeur / 2}
-            y={CENTRE - rayonExt}
+          {/* Carte du produit */}
+          <rect
+            x={x0}
+            y={CENTRE - r1}
             width={largeur}
-            height={rayonExt}
-            preserveAspectRatio="xMidYMid slice"
-            style={{ pointerEvents: "none" }}
-            // Un SVG <image> déclenche bien `error` : on bascule alors la case
-            // en mode texte (voir `imagesCassees` dans le composant Roue).
-            onError={onCasse}
+            height={hauteur}
+            rx={4}
+            ry={4}
+            fill={`url(#fond-${secteur.cle})`}
+            stroke="rgba(212,175,55,0.75)"
+            strokeWidth="0.9"
           />
+
+          {/* La photo, recadrée sur le produit et contenue dans la carte.
+              ⚠️ Le clip est porté par ce groupe ENTIER : `ImageCadree` dessine
+              l'image à sa taille d'origine puis la translate/échelle, donc sans
+              ce clip elle déborderait de la carte (et de la roue). */}
+          <g clipPath={`url(#${idCarte})`}>
+            {cadre ? (
+              <ImageCadree
+                href={secteur.image ?? ""}
+                cadre={cadre}
+                x={x0}
+                y={CENTRE - r1}
+                largeur={largeur}
+                hauteur={hauteur}
+                onCasse={onCasse}
+              />
+            ) : (
+              <image
+                href={secteur.image ?? undefined}
+                x={x0}
+                y={CENTRE - r1}
+                width={largeur}
+                height={hauteur}
+                preserveAspectRatio="xMidYMid meet"
+                style={{ pointerEvents: "none" }}
+                onError={onCasse}
+              />
+            )}
+          </g>
         </g>
         {/* Voile léger : garde les cloisons et l'aiguille lisibles même sur une
-            photo très claire (un ciel, un fond blanc). */}
-        <path d={chemin} fill="url(#voile)" opacity="0.32" />
+            photo très claire. Volontairement faible — le produit doit rester
+            net, c'est lui qu'on doit reconnaître. */}
+        <path d={chemin} fill="url(#voile)" opacity="0.14" />
       </g>
 
       {/* Liseré interne : détache la case de sa voisine sur les photos sombres. */}
-      <path d={chemin} fill="none" stroke="rgba(255,246,210,0.18)" strokeWidth="0.7" />
+      <path
+        d={chemin}
+        fill="none"
+        stroke="rgba(255,246,210,0.18)"
+        strokeWidth="0.7"
+      />
+    </g>
+  );
+}
+
+/**
+ * Dessine UNIQUEMENT la boîte englobante du produit, mise à l'échelle de la
+ * carte. On ne peut pas « recadrer » une balise `<image>` : on translate et on
+ * met à l'échelle l'image entière, le `clipPath` de la carte se chargeant de
+ * masquer les marges blanches restantes.
+ */
+function ImageCadree({
+  href,
+  cadre,
+  x,
+  y,
+  largeur,
+  hauteur,
+  onCasse,
+}: {
+  href: string;
+  cadre: Cadre;
+  x: number;
+  y: number;
+  largeur: number;
+  hauteur: number;
+  onCasse: () => void;
+}) {
+  // `meet` : on prend la plus petite des deux échelles, donc rien ne déborde.
+  const echelle = Math.min(largeur / cadre.bw, hauteur / cadre.bh);
+  const tx = x + largeur / 2 - (cadre.bx + cadre.bw / 2) * echelle;
+  const ty = y + hauteur / 2 - (cadre.by + cadre.bh / 2) * echelle;
+
+  return (
+    <g transform={`translate(${tx} ${ty}) scale(${echelle})`}>
+      <image
+        href={href}
+        x={0}
+        y={0}
+        width={cadre.largeur}
+        height={cadre.hauteur}
+        style={{ pointerEvents: "none" }}
+        onError={onCasse}
+      />
     </g>
   );
 }
@@ -743,7 +1017,7 @@ function Libelle({ secteur }: { secteur: Secteur }) {
   const lignes = decouper(libelle, compact ? 8 : 12);
 
   /** Rayon du centre du libellé : milieu de la couronne, jamais sur le bord. */
-  const rayon = RAYON * (compact ? 0.68 : 0.60);
+  const rayon = RAYON * (compact ? 0.68 : 0.6);
 
   /**
    * La taille de police est PLAFONNÉE par la largeur réellement disponible.
@@ -776,7 +1050,11 @@ function Libelle({ secteur }: { secteur: Secteur }) {
         transform={`translate(${CENTRE - icone / 2} ${CENTRE - RAYON * (compact ? 0.3 : 0.33) - icone / 2})`}
         opacity={0.92}
       >
-        <IconeCadeau nom={secteur.nom} taille={icone} couleur={secteur.couleurTexte} />
+        <IconeCadeau
+          nom={secteur.nom}
+          taille={icone}
+          couleur={secteur.couleurTexte}
+        />
       </g>
 
       {/**

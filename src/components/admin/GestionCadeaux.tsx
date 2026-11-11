@@ -2,7 +2,7 @@
 
 import { AnimatePresence, motion } from "framer-motion";
 import Image from "next/image";
-import { useActionState, useEffect, useMemo, useState } from "react";
+import { useActionState, useEffect, useMemo, useRef, useState } from "react";
 import {
   Check,
   ChevronDown,
@@ -26,6 +26,7 @@ import {
   type EtatAction,
 } from "@/app/admin/cadeaux/actions";
 import { BoutonFantome, BoutonOr, Carte, Pastille } from "@/components/ui/Base";
+import { compresserImage, TAILLE_SOURCE_MAX } from "@/lib/image-client";
 import type { Cadeau } from "@/lib/types";
 
 /**
@@ -335,6 +336,19 @@ function PanneauFormulaire({
   const [imageUrl, setImageUrl] = useState(cadeau?.image_url ?? "");
   const [imageCasse, setImageCasse] = useState(false);
   const [photo, setPhoto] = useState<File | null>(null);
+  /** Taille du fichier choisi avant réduction (pour afficher « 6,2 Mo → 140 ko »). */
+  const [tailleOrigine, setTailleOrigine] = useState<number | null>(null);
+  const [reduction, setReduction] = useState(false);
+  const [erreurPhoto, setErreurPhoto] = useState<string | null>(null);
+  /**
+   * Référence de l'input fichier.
+   *
+   * ⚠️ Indispensable : la Server Action lit le fichier DANS LE FORMULAIRE
+   * (`formData.get("photo")`), pas dans l'état React. Sans réinjecter la
+   * version compressée dans l'input, c'est l'original de 8 Mo qui partait —
+   * et « Image trop lourde » malgré la compression.
+   */
+  const refPhoto = useRef<HTMLInputElement | null>(null);
   /**
    * Aperçu de la photo choisie. L'URL d'objet est calculée PENDANT le rendu
    * (et révoquée à l'ouverture suivante) : un effet qui appellerait
@@ -569,23 +583,65 @@ function PanneauFormulaire({
               <ImageIcon className="size-4 text-or" />
               {photo ? photo.name : "Choisir une photo sur cet appareil"}
               <input
+                ref={refPhoto}
                 id="photo"
                 name="photo"
                 type="file"
                 accept="image/png,image/jpeg,image/webp,image/gif"
                 className="sr-only"
-                onChange={(e) => {
-                  const f = e.target.files?.[0] ?? null;
-                  setPhoto(f);
+                onChange={async (e) => {
+                  const choisi = e.target.files?.[0] ?? null;
                   setImageCasse(false);
-                  if (f) setImageUrl("");
+                  setErreurPhoto(null);
+                  setTailleOrigine(choisi?.size ?? null);
+                  if (!choisi) {
+                    setPhoto(null);
+                    return;
+                  }
+                  if (choisi.size > TAILLE_SOURCE_MAX) {
+                    setPhoto(null);
+                    setErreurPhoto("Fichier trop volumineux pour être lu ici (40 Mo maximum).");
+                    return;
+                  }
+                  // Réduction immédiate : l'exploitant voit tout de suite le
+                  // poids réel qui sera envoyé, et l'envoi ne dépasse jamais
+                  // la limite de la Server Action.
+                  setReduction(true);
+                  const resultat = await compresserImage(choisi);
+                  setReduction(false);
+                  setPhoto(resultat.fichier);
+                  setImageUrl("");
+
+                  // On remplace le fichier DANS l'input : c'est lui que le
+                  // formulaire envoie. `DataTransfer` est le seul moyen de
+                  // réécrire `input.files` depuis un script.
+                  if (resultat.reduite && refPhoto.current) {
+                    try {
+                      const transfert = new DataTransfer();
+                      transfert.items.add(resultat.fichier);
+                      refPhoto.current.files = transfert.files;
+                    } catch {
+                      setErreurPhoto(
+                        "Réduction impossible dans ce navigateur : la photo partira telle quelle.",
+                      );
+                    }
+                  }
                 }}
               />
             </label>
-            {photo && (
+            {reduction && (
+              <p className="mt-1 text-[10.5px] text-cendre/60">Réduction de la photo…</p>
+            )}
+            {photo && !reduction && (
               <p className="mt-1 text-[10.5px] text-cendre/50">
-                {(photo.size / 1024).toFixed(0)} ko · enregistrée à l&apos;envoi du formulaire
+                {tailleOrigine && tailleOrigine > photo.size
+                  ? `${formaterPoids(tailleOrigine)} → ${formaterPoids(photo.size)} (réduite automatiquement)`
+                  : formaterPoids(photo.size)}{" "}
+                · envoyée à l&apos;enregistrement
               </p>
+            )}
+            {erreurPhoto && (
+              <p className="mt-1 text-[10.5px] text-rose-200">{erreurPhoto}</p>
             )}
 
             {/* 3) Sinon, image déjà en ligne. */}
@@ -676,4 +732,12 @@ function PanneauFormulaire({
       </motion.div>
     </motion.div>
   );
+}
+
+/** « 6,2 Mo » / « 140 ko » — plus parlant qu'un nombre d'octets. */
+function formaterPoids(octets: number): string {
+  if (octets >= 1024 * 1024) {
+    return `${(octets / (1024 * 1024)).toFixed(1).replace(".", ",")} Mo`;
+  }
+  return `${Math.round(octets / 1024)} ko`;
 }

@@ -37,7 +37,9 @@ async function enregistrerPhoto(fichier: File): Promise<{ url?: string; erreur?:
     return { erreur: "Format non pris en charge : utilisez un JPG, PNG, WEBP ou GIF." };
   }
   if (fichier.size > TAILLE_IMAGE_MAX) {
-    return { erreur: "Image trop lourde : 3 Mo maximum." };
+    return {
+      erreur: `Image trop lourde (${Math.round(fichier.size / 1024 / 1024)} Mo) : 3 Mo maximum. Réessayez depuis le formulaire : la photo y est réduite automatiquement.`,
+    };
   }
   const resultat = await enregistrerImage(Buffer.from(await fichier.arrayBuffer()), fichier.type);
   return "url" in resultat ? { url: resultat.url } : { erreur: resultat.erreur };

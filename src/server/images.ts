@@ -24,6 +24,12 @@ export const TYPES_IMAGE: Record<string, string> = {
   "image/gif": "gif",
 };
 
+/**
+ * Plafond après réduction dans le navigateur (voir src/lib/image-client.ts).
+ *
+ * Une photo de téléphone (4 à 10 Mo) est ramenée à ~120 Ko avant l'envoi :
+ * cette limite n'est donc atteinte que si la réduction n'a pas pu se faire.
+ */
 export const TAILLE_IMAGE_MAX = 3 * 1024 * 1024; // 3 Mo
 
 /** Extension sûre à partir du type MIME (jamais du nom de fichier fourni). */

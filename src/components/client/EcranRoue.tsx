@@ -80,6 +80,34 @@ export function EcranRoue({
     }
   }, [chargement, enVol]);
 
+  /**
+   * Entretien silencieux : détoure les photos produits encore sur fond blanc.
+   *
+   * Les photos enregistrées avant l'arrivée du détourage automatique gardent
+   * leur fond d'origine ; dans une case, ce rectangle est découpé en biseau
+   * par le secteur — c'est le rendu « pas joli ». On les traite donc ici, en
+   * tâche de fond, dès que la roue s'affiche.
+   *
+   * Pourquoi côté navigateur et pas dans la page (rendu serveur) : la page
+   * roue est prérendue, donc servie depuis le cache — son code ne s'exécute
+   * pas à chaque visite. Un appel depuis le client est déterministe.
+   *
+   * Volontairement discret : aucun état, aucun message, aucune erreur à
+   * l'écran. Une fois le catalogue à jour, l'appel ne fait plus rien.
+   */
+  useEffect(() => {
+    const controleur = new AbortController();
+    const minuteur = setTimeout(() => {
+      fetch("/api/detourage", { method: "POST", signal: controleur.signal }).catch(() => {
+        // Hors ligne, onglet fermé : on retentera à la prochaine visite.
+      });
+    }, 1500); // après le premier rendu : la roue passe avant tout
+    return () => {
+      clearTimeout(minuteur);
+      controleur.abort();
+    };
+  }, []);
+
   /** F3 — un message d'erreur doit être VU (il est au-dessus de la roue). */
   useEffect(() => {
     if (!erreur) return;

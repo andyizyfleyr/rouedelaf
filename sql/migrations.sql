@@ -311,3 +311,165 @@ DO $$ BEGIN
     COMMENT ON TABLE images_cadeaux IS 'Photos de cadeaux uploadées depuis l''admin.';
   END IF;
 END $$;
+
+-- ----------------------------------------------------------------------------
+--  M8. Suppression réelle d'un cadeau déjà gagné
+--
+--  La clé étrangère `tirages.cadeau_id` était en ON DELETE RESTRICT : dès
+--  qu'un lot avait été gagné une fois, « Supprimer » échouait — pour toujours,
+--  puisque l'historique ne s'efface pas. L'exploitant ne pouvait donc jamais
+--  faire le ménage dans son catalogue.
+--
+--  On passe en SET NULL **et** on recopie l'identité du lot dans le tirage
+--  (nom, couleur, icône, photo) : les gagnants déjà affichés sur la borne et
+--  dans l'historique gardent leur cadeau, leur couleur et leur icône, même
+--  après la disparition du lot du catalogue.
+-- ----------------------------------------------------------------------------
+DO $$ BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.columns
+              WHERE table_schema = 'public' AND table_name = 'tirages'
+                AND column_name = 'cadeau_id') THEN
+
+    ALTER TABLE tirages ADD COLUMN IF NOT EXISTS cadeau_nom       text;
+    ALTER TABLE tirages ADD COLUMN IF NOT EXISTS cadeau_couleur   text;
+    ALTER TABLE tirages ADD COLUMN IF NOT EXISTS cadeau_icone     text;
+    ALTER TABLE tirages ADD COLUMN IF NOT EXISTS cadeau_image_url text;
+
+    -- On fige l'identité du lot pour les tirages existants (une seule fois).
+    UPDATE tirages t
+       SET cadeau_nom = c.nom,
+           cadeau_couleur = c.couleur,
+           cadeau_icone = c.icone,
+           cadeau_image_url = c.image_url
+      FROM cadeaux c
+     WHERE c.id = t.cadeau_id
+       AND t.cadeau_nom IS NULL;
+
+    -- La contrainte RESTRICT devient SET NULL.
+    IF EXISTS (SELECT 1 FROM pg_constraint
+                WHERE conname = 'tirages_cadeau_id_fkey'
+                  AND conrelid = 'tirages'::regclass) THEN
+      ALTER TABLE tirages DROP CONSTRAINT tirages_cadeau_id_fkey;
+    END IF;
+    ALTER TABLE tirages
+      ADD CONSTRAINT tirages_cadeau_id_fkey
+      FOREIGN KEY (cadeau_id) REFERENCES cadeaux(id) ON DELETE SET NULL;
+
+    -- Un tirage gagné doit rester cohérent même si le lot disparaît : la
+    -- contrainte d'origine exigeait cadeau_id non NULL pour un gain.
+    ALTER TABLE tirages DROP CONSTRAINT IF EXISTS tirages_gain_coherent;
+    ALTER TABLE tirages
+      ADD CONSTRAINT tirages_gain_coherent CHECK (
+        (statut = 'gagne' AND code_unique IS NOT NULL)
+        OR (statut = 'perdu' AND cadeau_id IS NULL AND code_unique IS NULL)
+      );
+  END IF;
+END $$;
+
+-- ----------------------------------------------------------------------------
+--  M9. Le tirage fige l'identité du lot qu'il offre
+--
+--  Complète M8 : à l'enregistrement d'un gain, le nom, la couleur, l'icône et
+--  la photo du lot sont recopiés dans le tirage. Si le lot est supprimé du
+--  catalogue plus tard, l'historique, le code de retrait et l'écran des
+--  gagnants continuent d'afficher le bon cadeau.
+--
+--  Même signature qu'avant (aucun appel à modifier côté application).
+-- ----------------------------------------------------------------------------
+CREATE OR REPLACE FUNCTION public.enregistrer_tirage(
+  p_participant_id bigint,
+  p_cadeau_id      bigint,
+  p_duree_jours    integer DEFAULT 14,
+  p_tour_bonus     boolean DEFAULT false,
+  p_appareil       text DEFAULT NULL,
+  p_ip_hash        text DEFAULT NULL
+)
+RETURNS TABLE (
+  tirage_id   bigint,
+  cadeau_id   bigint,
+  code_unique text,
+  expire_le   timestamptz,
+  statut      text
+)
+LANGUAGE plpgsql
+AS $$
+DECLARE
+  v_stock      integer;
+  v_code       text;
+  v_tirage_id  bigint;
+  v_expire     timestamptz;
+  v_statut     text;
+  v_alphabet   text := 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  v_try        integer := 0;
+  v_tours_max  integer;
+  v_bonus      integer;
+  v_deja       integer;
+  v_bloque     boolean;
+  v_nom        text;
+  v_couleur    text;
+  v_icone      text;
+  v_image      text;
+BEGIN
+  -- Participant FACULTATIF (M4) : sur le poste de la boutique, le tirage est
+  -- anonyme (p_participant_id NULL) et le nombre de tours n'est plus limité.
+  IF p_participant_id IS NOT NULL THEN
+    SELECT tours_bonus, bloque INTO v_bonus, v_bloque
+      FROM participants
+     WHERE id = p_participant_id
+     FOR UPDATE;
+
+    IF v_bloque IS TRUE THEN
+      RAISE EXCEPTION 'BLOQUE: ce participant est bloqué';
+    END IF;
+  END IF;
+
+  IF p_cadeau_id IS NOT NULL THEN
+    -- Verrou de ligne : deux tirages simultanés ne peuvent pas prendre le
+    -- même dernier article.
+    SELECT stock, nom, couleur, icone, image_url
+      INTO v_stock, v_nom, v_couleur, v_icone, v_image
+      FROM cadeaux
+     WHERE id = p_cadeau_id
+     FOR UPDATE;
+
+    IF v_stock IS NULL OR v_stock <= 0 THEN
+      RAISE EXCEPTION 'CADEAU_INDISPONIBLE: stock épuisé';
+    END IF;
+
+    UPDATE cadeaux SET stock = stock - 1, updated_at = now() WHERE id = p_cadeau_id;
+
+    v_statut := 'gagne';
+    -- Code de retrait (alphabet sans caractères ambigus).
+    LOOP
+      v_try := v_try + 1;
+      v_code := 'ROUE-' ||
+        substr(v_alphabet, 1 + floor(random() * 32)::int, 1) ||
+        substr(v_alphabet, 1 + floor(random() * 32)::int, 1) ||
+        substr(v_alphabet, 1 + floor(random() * 32)::int, 1) ||
+        substr(v_alphabet, 1 + floor(random() * 32)::int, 1) || '-' ||
+        substr(v_alphabet, 1 + floor(random() * 32)::int, 1) ||
+        substr(v_alphabet, 1 + floor(random() * 32)::int, 1) ||
+        substr(v_alphabet, 1 + floor(random() * 32)::int, 1) ||
+        substr(v_alphabet, 1 + floor(random() * 32)::int, 1);
+      EXIT WHEN NOT EXISTS (SELECT 1 FROM tirages t WHERE t.code_unique = v_code) OR v_try > 20;
+    END LOOP;
+    v_expire := now() + (p_duree_jours || ' days')::interval;
+  ELSE
+    v_statut := 'perdu';
+    v_code := NULL;
+    v_expire := now() + (p_duree_jours || ' days')::interval;
+  END IF;
+
+  INSERT INTO tirages (
+    participant_id, cadeau_id, code_unique, statut, expire_le, tour_bonus, appareil, ip_hash,
+    cadeau_nom, cadeau_couleur, cadeau_icone, cadeau_image_url
+  )
+  VALUES (
+    p_participant_id, p_cadeau_id, v_code, v_statut, v_expire, p_tour_bonus, p_appareil, p_ip_hash,
+    v_nom, v_couleur, v_icone, v_image
+  )
+  RETURNING id INTO v_tirage_id;
+
+  RETURN QUERY SELECT v_tirage_id, p_cadeau_id, v_code, v_expire, v_statut;
+END;
+$$;

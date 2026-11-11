@@ -164,3 +164,18 @@ test("cas extrême : probabilités supérieures à 100 % restent sûres", () => 
     assert.ok(resultat === null || resultat.id === 1 || resultat.id === 2);
   }
 });
+
+test("le nombre de cases suit le réglage de l'exploitant", () => {
+  // 8 lots + 4 cases « Perdu » = 12 cases.
+  assert.equal(construireCases(cadeaux, 12).length, 12);
+  // 16 demandées avec 8 lots → 8 cases « Perdu ».
+  assert.equal(construireCases(cadeaux, 16).length, 16);
+  // Un réglage impair est ramené au pair le plus proche.
+  assert.equal(construireCases(cadeaux, 11).length, 12);
+  // Les bornes s'appliquent (jamais moins de 4, jamais plus de 32).
+  assert.equal(construireCases(cadeaux, 2).length, 8, "8 lots ⇒ au moins 8 cases");
+  assert.equal(construireCases(cadeaux, 999).length, 32);
+  // Un catalogue plus fourni que le réglage n'est jamais tronqué : tous les
+  // lots restent visibles, donc gagnables.
+  assert.equal(construireCases(cadeaux, 4).length, 8);
+});

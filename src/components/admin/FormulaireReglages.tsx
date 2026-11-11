@@ -10,6 +10,7 @@ import {
 import { BoutonOr, Carte, Pastille } from "@/components/ui/Base";
 import { formatDateHeure } from "@/lib/format";
 import type { LigneJournal } from "@/server/audit";
+import { CASES_MAX, CASES_MIN_REGLABLE } from "@/lib/roue";
 import type { Parametres } from "@/server/params";
 
 /** Formulaire des réglages du jeu + journal d'audit. */
@@ -47,6 +48,21 @@ export function FormulaireReglages({
               className="size-5 accent-[#e8c66a]"
             />
           </label>
+
+          {/* Nombre de cases : c'est lui qui décide combien de cases « Perdu »
+              complètent le catalogue. Au-delà du nombre de lots, chaque case
+              en plus est une chance de ne rien gagner. */}
+          <div className="grid gap-3 sm:grid-cols-2">
+            <Champ
+              name="nombreCases"
+              libelle="Cases sur la roue"
+              valeur={parametres.nombreCases}
+              min={CASES_MIN_REGLABLE}
+              max={CASES_MAX}
+              pas={2}
+              aide={`Pair, de ${CASES_MIN_REGLABLE} à ${CASES_MAX}. Les cases en plus des lots sont des « Perdu ».`}
+            />
+          </div>
 
           {/* Identité de la boutique : ce nom s'affiche partout (bandeau,
               titre du navigateur, borne, écran boutique). Il est en base et
@@ -162,6 +178,7 @@ function Champ({
   max,
   aide,
   texte = false,
+  pas,
 }: {
   name: string;
   libelle: string;
@@ -169,6 +186,8 @@ function Champ({
   min?: number;
   max?: number;
   aide?: string;
+  /** Pas d'incrément (2 pour un nombre pair, par exemple). */
+  pas?: number;
   /** Champ libre (nom, adresse) au lieu d'un nombre. */
   texte?: boolean;
 }) {
@@ -183,6 +202,7 @@ function Champ({
         type={texte ? "text" : "number"}
         min={texte ? undefined : min}
         max={texte ? undefined : max}
+        step={texte ? undefined : (pas ?? 1)}
         maxLength={texte ? 120 : undefined}
         defaultValue={valeur}
         className="champ"

@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
 import { exigerAdmin } from "@/lib/session";
+import { CASES_MAX, CASES_MIN_REGLABLE, normaliserNombreCases } from "@/lib/roue";
 import { ecrireParametre } from "@/server/params";
 import { journaliser } from "@/server/data";
 
@@ -12,6 +13,7 @@ import { journaliser } from "@/server/data";
 export type EtatReglages = { ok?: boolean; message?: string; erreur?: string };
 
 const schema = z.object({
+  nombreCases: z.coerce.number().int().min(CASES_MIN_REGLABLE).max(CASES_MAX),
   boutiqueNom: z.string().trim().min(1, "Le nom de la boutique est obligatoire.").max(60),
   boutiqueAdresse: z.string().trim().max(120),
   dureeValiditeCodeJours: z.coerce.number().int().min(1).max(365),
@@ -31,6 +33,7 @@ export async function actionEnregistrerReglages(
   }
 
   const analyse = schema.safeParse({
+    nombreCases: formData.get("nombreCases"),
     boutiqueNom: formData.get("boutiqueNom"),
     boutiqueAdresse: formData.get("boutiqueAdresse"),
     dureeValiditeCodeJours: formData.get("dureeValiditeCodeJours"),
@@ -46,6 +49,7 @@ export async function actionEnregistrerReglages(
   const d = analyse.data;
   try {
     await Promise.all([
+      ecrireParametre("nb_cases", String(normaliserNombreCases(d.nombreCases))),
       ecrireParametre("boutique_nom", d.boutiqueNom),
       ecrireParametre("boutique_adresse", d.boutiqueAdresse),
       ecrireParametre("duree_validite_code_jours", String(d.dureeValiditeCodeJours)),

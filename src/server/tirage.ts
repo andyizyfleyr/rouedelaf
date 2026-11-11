@@ -111,6 +111,7 @@ export async function effectuerTirage(contexte: {
       stock: Number(c.stock),
       image_url: c.image_url,
     })),
+    parametres.nombreCases,
   );
 
   // 2 bis) AUCUN LOT DISPONIBLE → on refuse le tirage.

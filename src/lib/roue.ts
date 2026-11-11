@@ -13,6 +13,28 @@ import type { CadeauRoue } from "./types";
 export const CASES_MIN = 8;
 
 /**
+ * Nombre de cases de la roue, réglable par l'exploitant (`parametres.nb_cases`).
+ *
+ * Pourquoi un réglage et plus une constante : le nombre de lots change (soldes,
+ * arrivages), et une roue figée à 8 se remplissait de cases « Perdu » inutiles
+ * dès que le catalogue grandissait — ou forçait à créer des lots fantômes pour
+ * l'étoffer. Bornes : 4 (en dessous, les secteurs sont énormes et le texte
+ * géant) à 32 (au-delà, un secteur ne fait plus que 11° : les libellés
+ * deviennent illisibles sur un téléphone).
+ */
+export const CASES_DEFAUT = 8;
+export const CASES_MIN_REGLABLE = 4;
+export const CASES_MAX = 32;
+
+/** Ramène une valeur quelconque dans les bornes, par pas de 2 (roue paire). */
+export function normaliserNombreCases(valeur: number | null | undefined): number {
+  const n = Number(valeur);
+  if (!Number.isFinite(n)) return CASES_DEFAUT;
+  const pair = Math.round(n / 2) * 2;
+  return Math.min(CASES_MAX, Math.max(CASES_MIN_REGLABLE, pair));
+}
+
+/**
  * Case « perdante » affichée sur la roue. Elle n'existe PAS dans la table
  * cadeaux : un tirage perdant est enregistré avec cadeau_id = NULL.
  * Les identifiants négatifs servent uniquement de clés React.
@@ -37,7 +59,8 @@ export const CASE_PERDUE: CadeauRoue = {
 /**
  * Construit la liste des cases affichées.
  * - On part des lots actifs.
- * - On complète avec des cases « Perdu » jusqu'à CASES_MIN.
+ * - On complète avec des cases « Perdu » jusqu'au nombre de cases voulu
+ *   (`nombreCases`, réglable dans l'admin).
  * - On garantit un nombre PAIR de cases : deux cases diamétralement opposées
  *   ont alors des secteurs de même taille, donc toujours des centres distincts
  *   et sans ambiguïté pour l'aiguille (pas de superposition à 180°).
@@ -64,19 +87,25 @@ function alternerCouleurs(lots: CadeauRoue[]): CadeauRoue[] {
   return ordonnes;
 }
 
-export function construireCases(cadeaux: CadeauRoue[]): CadeauRoue[] {
+export function construireCases(
+  cadeaux: CadeauRoue[],
+  nombreCases: number = CASES_DEFAUT,
+): CadeauRoue[] {
   const lots = alternerCouleurs(cadeaux.filter((c) => c.probabilite > 0).map((c) => ({ ...c })));
+  const voulu = normaliserNombreCases(nombreCases);
 
   if (lots.length === 0) {
     // Aucun lot : la roue ne sert à rien, mais elle doit rester géométriquement
     // valide (cela n'arrive plus en pratique : le serveur refuse le tirage).
-    return Array.from({ length: CASES_MIN }, (_, i) => ({ ...CASE_PERDUE, id: -1 - i }));
+    return Array.from({ length: voulu }, (_, i) => ({ ...CASE_PERDUE, id: -1 - i }));
   }
 
-  // Objectif : au moins CASES_MIN cases, et un nombre PAIR (deux cases
+  // Objectif : le nombre de cases réglé, et un nombre PAIR (deux cases
   // diamétralement opposées ont alors des secteurs de même taille, donc des
   // centres distincts : l'aiguille ne peut pas hésiter entre deux cases).
-  const total = Math.max(CASES_MIN, lots.length + (lots.length % 2 === 0 ? 0 : 1));
+  // Si le catalogue est plus fourni que le réglage, on affiche tous les lots :
+  // jamais de lot invisible, donc jamais de cadeau impossible à gagner.
+  const total = Math.max(voulu, lots.length + (lots.length % 2 === 0 ? 0 : 1));
   const cible = total % 2 === 0 ? total : total + 1;
   const perdus = Math.max(cible - lots.length, 0);
 

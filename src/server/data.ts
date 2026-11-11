@@ -43,8 +43,11 @@ export async function tirageParCode(code: string): Promise<
       t.id, t.statut, t.code_unique, t.recupere, t.expire_le, t.created_at,
       t.participant_id,
       p.nom AS participant_nom, p.telephone_aff,
-      c.nom AS cadeau_nom, c.couleur AS cadeau_couleur, c.icone AS cadeau_icone,
-      c.description AS cadeau_description, c.image_url AS cadeau_image_url
+      COALESCE(c.nom, t.cadeau_nom) AS cadeau_nom,
+      COALESCE(c.couleur, t.cadeau_couleur) AS cadeau_couleur,
+      COALESCE(c.icone, t.cadeau_icone) AS cadeau_icone,
+      c.description AS cadeau_description,
+      COALESCE(c.image_url, t.cadeau_image_url) AS cadeau_image_url
     FROM tirages t
     LEFT JOIN participants p ON p.id = t.participant_id
     LEFT JOIN cadeaux c ON c.id = t.cadeau_id
@@ -150,14 +153,25 @@ export async function modifierCadeau(
   `;
 }
 
+/**
+ * Supprime un lot du catalogue — MÊME s'il a déjà été gagné.
+ *
+ * Avant, la présence d'un seul tirage bloquait la suppression pour toujours
+ * (clé étrangère en RESTRICT + refus explicite ici) : le catalogue devenait
+ * impossible à nettoyer. Désormais le tirage garde une copie figée du lot
+ * (nom, couleur, icône, photo — voir migration M8), donc l'historique et
+ * l'écran des gagnants restent corrects après la suppression.
+ */
 export async function supprimerCadeau(id: number): Promise<{ ok: boolean; raison?: string }> {
-  const [utilise] = await sql`SELECT 1 FROM tirages WHERE cadeau_id = ${id} LIMIT 1`;
-  if (utilise) {
-    return {
-      ok: false,
-      raison: "Ce cadeau a déjà été gagné : désactivez-le plutôt que de le supprimer.",
-    };
-  }
+  await sql`
+    UPDATE tirages t
+       SET cadeau_nom = COALESCE(t.cadeau_nom, c.nom),
+           cadeau_couleur = COALESCE(t.cadeau_couleur, c.couleur),
+           cadeau_icone = COALESCE(t.cadeau_icone, c.icone),
+           cadeau_image_url = COALESCE(t.cadeau_image_url, c.image_url)
+      FROM cadeaux c
+     WHERE c.id = ${id} AND t.cadeau_id = ${id}
+  `;
   await sql`DELETE FROM cadeaux WHERE id = ${id}`;
   return { ok: true };
 }
@@ -191,10 +205,10 @@ export async function listerGagnantsRecents(limite = 25): Promise<GagnantEcran[]
   const lignes = await sql`
     SELECT
       t.id,
-      c.nom AS cadeau_nom,
-      c.couleur,
-      c.icone,
-      c.image_url,
+      COALESCE(c.nom, t.cadeau_nom) AS cadeau_nom,
+      COALESCE(c.couleur, t.cadeau_couleur) AS couleur,
+      COALESCE(c.icone, t.cadeau_icone) AS icone,
+      COALESCE(c.image_url, t.cadeau_image_url) AS image_url,
       t.created_at
     FROM tirages t
     LEFT JOIN cadeaux c ON c.id = t.cadeau_id
@@ -215,10 +229,10 @@ export async function fluxBorne(limite = 10): Promise<FluxBorne> {
     sql`
       SELECT
         t.id,
-        c.nom AS cadeau_nom,
-        c.couleur,
-        c.icone,
-        c.image_url,
+        COALESCE(c.nom, t.cadeau_nom) AS cadeau_nom,
+        COALESCE(c.couleur, t.cadeau_couleur) AS couleur,
+        COALESCE(c.icone, t.cadeau_icone) AS icone,
+        COALESCE(c.image_url, t.cadeau_image_url) AS image_url,
         t.created_at
       FROM tirages t
       LEFT JOIN cadeaux c ON c.id = t.cadeau_id

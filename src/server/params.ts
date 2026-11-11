@@ -3,6 +3,7 @@ import "server-only";
 import { cache } from "react";
 
 import { sql } from "@/lib/db";
+import { CASES_DEFAUT, normaliserNombreCases } from "@/lib/roue";
 
 /**
  * Lecture des réglages de la table `parametres` (avec valeurs par défaut).
@@ -11,6 +12,8 @@ import { sql } from "@/lib/db";
  */
 
 export type Parametres = {
+  /** Nombre de cases de la roue (réglable : 4 à 32, pair). */
+  nombreCases: number;
   boutiqueNom: string;
   boutiqueAdresse: string;
   dureeValiditeCodeJours: number;
@@ -28,6 +31,7 @@ export type Parametres = {
  * gênent personne) mais ne sont plus lues.
  */
 const DEFAUTS: Parametres = {
+  nombreCases: CASES_DEFAUT,
   boutiqueNom: process.env.NEXT_PUBLIC_BOUTIQUE_NOM || "Ma Boutique",
   boutiqueAdresse: process.env.NEXT_PUBLIC_BOUTIQUE_ADRESSE || "Cotonou, Bénin",
   dureeValiditeCodeJours: 14,
@@ -67,6 +71,7 @@ export const lireParametres: () => Promise<Parametres> = cache(async (): Promise
     };
 
     const valeur: Parametres = {
+      nombreCases: normaliserNombreCases(nombre("nb_cases", DEFAUTS.nombreCases)),
       boutiqueNom: (map.get("boutique_nom") ?? "").trim() || DEFAUTS.boutiqueNom,
       boutiqueAdresse: (map.get("boutique_adresse") ?? "").trim() || DEFAUTS.boutiqueAdresse,
       dureeValiditeCodeJours: nombre(

@@ -52,6 +52,7 @@ async function Contenu() {
       // Une case avec photo n'affichera QUE la photo (voir components/roue/Roue).
       image_url: c.image_url,
     })),
+    parametres.nombreCases,
   );
 
   return (

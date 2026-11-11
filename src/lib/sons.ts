@@ -16,7 +16,17 @@ import { Howl } from "howler";
  *  - Le choix « couper le son » est mémorisé dans localStorage.
  */
 
-let ambiance: Howl | null = null;
+/**
+ * Musique de fond : élément <audio> natif, et non Howler.
+ *
+ * Pourquoi pas Howler ici ? Le tic et les jingles sont courts et doivent
+ * pouvoir se superposer (d'où Howler et son pool). Une boucle de fond, elle,
+ * n'a besoin que de `loop` et `volume` — deux attributs que le navigateur gère
+ * seul. Surtout, un élément natif se recharge, se met en pause et se débloque
+ * (iOS) de façon fiable ; c'est aussi le seul moyen simple de diagnostiquer un
+ * échec de lecture (événement `error` sur l'élément).
+ */
+let ambiance: HTMLAudioElement | null = null;
 let ambianceLancee = false;
 let tic: Howl | null = null;
 let victoire: Howl | null = null;
@@ -56,23 +66,21 @@ function creerSons() {
     volume: 0.55,
     preload: true,
   });
+}
 
-  /*
-   * Musique de fond : boucle de 24 s synthétisée (scripts/generer-ambiance.mjs),
-   * 188 Ko en MP3. `loop: true` enchaîne sans repasser par le réseau, et
-   * l'image de départ est calée sur une grille de tempo : la boucle ne
-   * s'entend pas.
-   *
-   * `alpha`/`fade` : on ne la démarre jamais à plein volume — une musique qui
-   * surgit fait sursauter derrière un comptoir.
-   */
-  ambiance = new Howl({
-    src: ["/sons/ambiance.mp3"],
-    loop: true,
-    volume: 0,
-    preload: true,
-    html5: false,
-  });
+/**
+ * À appeler sur la première interaction utilisateur (politique navigateurs).
+ *
+ * Howler garde un contexte WebAudio suspendu tant que personne n'a touché la
+ * page : sans ce `resume()`, le tic et le jingle de victoire resteraient muets
+ * même après un clic.
+ */
+export function deverrouillerAudio(): void {
+  creerSons();
+  const ctx = (Howl as unknown as { ctx?: AudioContext }).ctx;
+  if (ctx && ctx.state === "suspended") void ctx.resume();
+  // Et on profite de l'interaction pour lancer la musique de fond.
+  demarrerAmbiance();
 }
 
 /**
@@ -103,51 +111,102 @@ export function estAmbianceCoupee(): boolean {
 }
 
 /**
- * Démarre (ou reprend) la musique de fond.
+ * Prépare l'élément audio de fond (une seule fois).
  *
- * ⚠️ Aucun navigateur mobile n'autorise l'audio sans interaction : le premier
- * appel échoue silencieusement. L'écran de la roue rappelle donc cette
- * fonction à la première touche de l'utilisateur (voir AmbianceCasino), et le
- * moyeu la rappelle aussi au moment du tirage.
+ * `preload = auto` : la boucle se télécharge pendant que le client regarde la
+ * roue, pour démarrer sans délai au premier geste.
  */
+function obtenirAudio(): HTMLAudioElement | null {
+  if (typeof window === "undefined") return null;
+  if (!ambiance) {
+    const audio = new Audio("/sons/ambiance.mp3");
+    audio.loop = true;
+    // L'élément est rattaché au document (masqué) : iOS refuse parfois de
+    // jouer un média détaché, et il devient inspectable dans les outils de
+    // développement — indispensable quand « la musique ne joue pas ».
+    audio.id = "ambiance-casino";
+    audio.setAttribute("aria-hidden", "true");
+    audio.style.display = "none";
+    (document.body ?? document.documentElement).append(audio);
+    audio.preload = "auto";
+    audio.volume = 0;
+    audio.crossOrigin = "anonymous";
+    // Un échec de lecture doit être visible dans la console : sans cela, un
+    // « la musique ne joue pas » reste indiagnosticable sur le poste.
+    audio.addEventListener("error", () => {
+      console.warn("[sons] ambiance indisponible", audio.error?.code, audio.error?.message);
+    });
+    ambiance = audio;
+  }
+  return ambiance;
+}
+
+/** Démarre (ou reprend) la musique de fond, à volume 0 puis fondu. */
 export function demarrerAmbiance(): void {
-  creerSons();
-  if (!ambiance || muet || estAmbianceCoupee()) return;
-  if (ambianceLancee) return;
+  const audio = obtenirAudio();
+  if (!audio || muet || estAmbianceCoupee()) return;
+  if (ambianceLancee && !audio.paused) return;
 
   ambianceLancee = true;
-  ambiance.volume(0);
-  ambiance.play();
-  ambiance.fade(0, VOLUME_AMBIANCE, 1800);
+  audio.volume = 0;
+
+  const fondu = () => {
+    // Fondu de 1,8 s : une musique qui surgit fait sursauter derrière un
+    // comptoir. `requestAnimationFrame` suffit pour un simple volume.
+    const debut = performance.now();
+    const monter = () => {
+      const t = Math.min(1, (performance.now() - debut) / 1800);
+      audio.volume = VOLUME_AMBIANCE * t;
+      if (t < 1 && ambianceLancee) requestAnimationFrame(monter);
+    };
+    monter();
+  };
+
+  const promesse = audio.play();
+  if (promesse && typeof promesse.then === "function") {
+    promesse.then(fondu).catch((e) => {
+      // Lecture refusée (politique navigateur) : on réessaiera au prochain
+      // geste — c'est exactement ce que fait AmbianceCasino.
+      ambianceLancee = false;
+      console.warn("[sons] ambiance en attente d'une interaction", e?.name);
+    });
+  } else {
+    fondu();
+  }
+}
+
+function arreterAmbiance(): void {
+  ambianceLancee = false;
+  if (!ambiance) return;
+  ambiance.pause();
 }
 
 /** Coupe la musique de fond (sans toucher aux sons du jeu). */
 export function couperAmbiance(): void {
-  creerSons();
-  if (!ambiance) return;
-  ambiance.fade(ambiance.volume() as number, 0, 500);
-  window.setTimeout(() => {
-    ambiance?.pause();
-    ambianceLancee = false;
-  }, 520);
+  if (!ambiance || ambiance.paused) {
+    arreterAmbiance();
+    return;
+  }
+  const audio = ambiance;
+  const depart = audio.volume;
+  const debut = performance.now();
+  const baisser = () => {
+    const t = Math.min(1, (performance.now() - debut) / 400);
+    audio.volume = Math.max(0, depart * (1 - t));
+    if (t < 1) requestAnimationFrame(baisser);
+    else arreterAmbiance();
+  };
+  baisser();
 }
 
 /** Bascule l'ambiance ; renvoie true si elle est désormais coupée. */
 export function basculerAmbiance(): boolean {
-  creerSons();
   const coupee = !estAmbianceCoupee();
   window.localStorage.setItem(CLE_AMBIANCE, coupee ? "1" : "0");
   if (coupee) couperAmbiance();
   else demarrerAmbiance();
   notifierAmbiance();
   return coupee;
-}
-
-/** À appeler sur la première interaction utilisateur (politique navigateurs). */
-export function deverrouillerAudio(): void {
-  creerSons();
-  const ctx = (Howl as unknown as { ctx?: AudioContext }).ctx;
-  if (ctx && ctx.state === "suspended") void ctx.resume();
 }
 
 export function jouerTic(vitesse = 1): void {

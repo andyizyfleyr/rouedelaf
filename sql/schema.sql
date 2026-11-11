@@ -109,7 +109,15 @@ CREATE TABLE IF NOT EXISTS tirages (
   -- NULL = tirage joué sur le poste de la boutique, sans compte client
   -- (voir migration M4 : le jeu n'a plus d'inscription).
   participant_id bigint REFERENCES participants(id) ON DELETE CASCADE,
-  cadeau_id      bigint REFERENCES cadeaux(id) ON DELETE RESTRICT,
+  -- SET NULL : supprimer un lot du catalogue ne doit pas être impossible sous
+  -- prétexte qu'il a déjà été gagné. Le nom/la couleur sont recopiés dans les
+  -- colonnes ci-dessous, donc l'historique reste lisible (voir M8).
+  cadeau_id      bigint REFERENCES cadeaux(id) ON DELETE SET NULL,
+  -- Copie figée de l'identité du lot au moment du tirage.
+  cadeau_nom     text,
+  cadeau_couleur text,
+  cadeau_icone   text,
+  cadeau_image_url text,
   code_unique    text UNIQUE,                  -- code lisible ex. ROUE-7F3K-92QP
   statut         text NOT NULL,
   recupere       boolean NOT NULL DEFAULT false,

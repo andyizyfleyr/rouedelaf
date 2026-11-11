@@ -129,7 +129,7 @@ CREATE TABLE IF NOT EXISTS tirages (
   created_at     timestamptz NOT NULL DEFAULT now(),
   CONSTRAINT tirages_statut_valide CHECK (statut IN ('gagne', 'perdu')),
   CONSTRAINT tirages_gain_coherent CHECK (
-    (statut = 'gagne' AND cadeau_id IS NOT NULL AND code_unique IS NOT NULL)
+    (statut = 'gagne' AND code_unique IS NOT NULL)
     OR (statut = 'perdu' AND cadeau_id IS NULL AND code_unique IS NULL)
   )
 );
@@ -140,6 +140,19 @@ COMMENT ON TABLE tirages IS 'Un tirage par participation (+ tours bonus). Le gag
 -- 5. PARRAINAGES (bouton « partager à un ami = 1 tour en plus »)
 --    Le parrain obtient un tour bonus quand un filleul s'inscrit via son code.
 -- ----------------------------------------------------------------------------
+-- Photos de cadeaux, stockées en base (voir src/server/images.ts).
+-- `detoure_le` : NULL = pas encore passé par le détourage automatique.
+-- `detourage_source` : octets d'origine, pour pouvoir revenir en arrière.
+CREATE TABLE IF NOT EXISTS images_cadeaux (
+  nom              text PRIMARY KEY,
+  type             text NOT NULL,
+  donnees          bytea NOT NULL,
+  taille           integer NOT NULL,
+  cree_le          timestamptz NOT NULL DEFAULT now(),
+  detoure_le       timestamptz,
+  detourage_source bytea
+);
+
 CREATE TABLE IF NOT EXISTS parrainages (
   id             bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
   parrain_id     bigint NOT NULL REFERENCES participants(id) ON DELETE CASCADE,

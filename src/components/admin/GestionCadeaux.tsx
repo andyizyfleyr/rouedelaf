@@ -2,6 +2,7 @@
 
 import { AnimatePresence, motion } from "framer-motion";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import { useActionState, useEffect, useMemo, useRef, useState } from "react";
 import {
   Check,
@@ -25,6 +26,7 @@ import {
   actionSupprimerCadeau,
   type EtatAction,
 } from "@/app/admin/cadeaux/actions";
+import { rattraperDetourage } from "@/app/admin/cadeaux/actions-detourage";
 import { BoutonFantome, BoutonOr, Carte, Pastille } from "@/components/ui/Base";
 import { compresserImage, TAILLE_SOURCE_MAX } from "@/lib/image-client";
 import type { Cadeau } from "@/lib/types";
@@ -44,6 +46,47 @@ export function GestionCadeaux({
   const [edition, setEdition] = useState<Cadeau | "nouveau" | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [erreur, setErreur] = useState<string | null>(null);
+  const router = useRouter();
+
+  /**
+   * Détourage de rattrapage, en tâche de fond.
+   *
+   * Les photos envoyées AVANT l'arrivée du détourage automatique gardent leur
+   * fond blanc : sur la roue, la case les découpe en biseau — c'est « pas
+   * joli ». On les traite ici, une fois, dès que l'exploitant ouvre le
+   * catalogue. L'action est bornée (6 images par appel) et se rappelle tant
+   * qu'il en reste ; dès qu'il n'y a plus rien, l'appel est sans effet.
+   *
+   * Volontairement silencieux : c'est de l'entretien, pas une action que
+   * l'exploitant a demandée. Seule la galerie est rafraîchie à la fin, pour
+   * que les vignettes montrent les produits détourés.
+   */
+  useEffect(() => {
+    let vivant = true;
+    let enCours = false;
+
+    const traiter = async () => {
+      if (enCours) return;
+      enCours = true;
+      try {
+        for (let tour = 0; tour < 6 && vivant; tour += 1) {
+          const { traitees, restantes } = await rattraperDetourage();
+          if (traitees === 0 || restantes === 0) break;
+        }
+        if (vivant) router.refresh();
+      } catch {
+        // Réseau, session expirée, base indisponible : on retentera à la
+        // prochaine visite. Jamais d'erreur à l'écran pour de l'entretien.
+      } finally {
+        enCours = false;
+      }
+    };
+
+    void traiter();
+    return () => {
+      vivant = false;
+    };
+  }, [router]);
 
   const totalProbabilite = useMemo(
     () => cadeaux.filter((c) => c.actif).reduce((s, c) => s + c.probabilite, 0),

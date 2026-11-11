@@ -903,7 +903,7 @@ function Vignette({
             opacity="0.35"
           />
 
-          {/* Le produit, détouré (PNG transparent) et posé à même la case.
+          {/* Le produit, posé à même la case.
               ⚠️ Aucun clip ici : le groupe parent `clipPath={url(#idClip)}` s'en
               charge déjà, et il est appliqué dans le repère NON tourné.
               Un second clip posé ici (dans le repère tourné) découpait un

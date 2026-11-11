@@ -237,9 +237,17 @@ BEGIN
     ALTER TABLE tirages DROP CONSTRAINT tirages_gain_coherent;
   END IF;
 
+  -- ⚠️ NE PAS exiger `cadeau_id IS NOT NULL` sur un gain.
+  --
+  -- M8 passe la clé étrangère en ON DELETE SET NULL : un lot gagné puis
+  -- supprimé du catalogue laisse un tirage `gagne` avec `cadeau_id` NULL. Une
+  -- contrainte qui l'interdit échoue alors à la création (erreur 23514,
+  -- « violated by some row ») — et, avant le correctif de `db.ts`, cet échec
+  -- empêchait TOUTES les migrations suivantes de s'appliquer. C'est ce qui a
+  -- laissé la production en version 11 alors que le code en attendait 12.
   ALTER TABLE tirages
     ADD CONSTRAINT tirages_gain_coherent CHECK (
-      (statut = 'gagne' AND cadeau_id IS NOT NULL AND code_unique IS NOT NULL)
+      (statut = 'gagne' AND code_unique IS NOT NULL)
       OR (statut = 'perdu' AND cadeau_id IS NULL AND code_unique IS NULL)
     );
 END $$;
@@ -355,8 +363,16 @@ DO $$ BEGIN
       ADD CONSTRAINT tirages_cadeau_id_fkey
       FOREIGN KEY (cadeau_id) REFERENCES cadeaux(id) ON DELETE SET NULL;
 
-    -- Un tirage gagné doit rester cohérent même si le lot disparaît : la
-    -- contrainte d'origine exigeait cadeau_id non NULL pour un gain.
+    -- Un tirage gagné doit rester cohérent même si le lot disparaît :
+    -- `cadeau_id` peut désormais être NULL sur un gain (SET NULL).
+    --
+    -- ⚠️ Ne PAS exiger `cadeau_id IS NOT NULL` pour un gain : M5 l'a
+    -- volontairement retiré. Sur une base en production, des gains existent
+    -- déjà avec un lot supprimé ; une contrainte qui l'exige échoue à la
+    -- création (erreur 23514) et fait tomber TOUTES les migrations suivantes
+    -- du fichier — y compris celles qui ajoutent de simples colonnes.
+    -- On retire donc l'ancienne contrainte, sans condition, avant de la
+    -- recréer dans sa forme tolérante.
     ALTER TABLE tirages DROP CONSTRAINT IF EXISTS tirages_gain_coherent;
     ALTER TABLE tirages
       ADD CONSTRAINT tirages_gain_coherent CHECK (
@@ -473,3 +489,35 @@ BEGIN
   RETURN QUERY SELECT v_tirage_id, p_cadeau_id, v_code, v_expire, v_statut;
 END;
 $$;
+
+-- ----------------------------------------------------------------------------
+--  M10. Marqueur « photo déjà détourée »
+--
+--  Le détourage (fond uni → PNG transparent) est fait PAR LE SERVEUR au moment
+--  de l'envoi. Or les photos déjà présentes dans la table ont été enregistrées
+--  AVANT cette fonctionnalité : elles gardent leur fond blanc, et la roue les
+--  découpe en biseau — exactement le « pas joli » signalé par l'exploitant.
+--
+--  Ce drapeau permet à l'application de savoir quelles images ont DÉJÀ été
+--  traitées (donc de ne pas les retraiter à chaque démarrage) et de repérer
+--  celles qui restent à détourer. Les images détourées sont des PNG ;
+--  l'originale est conservée dans `detourage_source` pour pouvoir revenir en
+--  arrière sans perte.
+-- ----------------------------------------------------------------------------
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+                  WHERE table_schema = 'public' AND table_name = 'images_cadeaux'
+                    AND column_name = 'detoure_le') THEN
+    ALTER TABLE images_cadeaux ADD COLUMN detoure_le timestamptz;
+    COMMENT ON COLUMN images_cadeaux.detoure_le IS
+      'Horodatage du détourage automatique. NULL = à détourer (photos importées avant la fonctionnalité).';
+  END IF;
+
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+                  WHERE table_schema = 'public' AND table_name = 'images_cadeaux'
+                    AND column_name = 'detourage_source') THEN
+    ALTER TABLE images_cadeaux ADD COLUMN detourage_source bytea;
+    COMMENT ON COLUMN images_cadeaux.detourage_source IS
+      'Octets d''origine avant détourage (garde-fou : le détourage est réversible).';
+  END IF;
+END $$;

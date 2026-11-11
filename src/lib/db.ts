@@ -123,7 +123,7 @@ async function executerBrut(texte: string, parametres: unknown[]): Promise<Ligne
 let schemaPret = false;
 let verificationEnCours: Promise<void> | null = null;
 /** Version de schéma déjà appliquée par ce processus (voir MIGRATIONS). */
-const VERSION_SCHEMA = 11;
+const VERSION_SCHEMA = 12;
 
 async function verifierSchema(): Promise<void> {
   if (schemaPret) return;
@@ -191,19 +191,50 @@ async function appliquerMigrations(): Promise<void> {
     // en blocs (en respectant les corps `$$ … $$` des fonctions).
     const instructions = decouperBlocsSql(script);
 
+    /*
+     * Chaque bloc est rejoué INDÉPENDAMMENT.
+     *
+     * Pourquoi pas tout d'un seul tenant : un bloc qui échoue — une contrainte
+     * devenue incompatible avec les données existantes, par exemple — faisait
+     * tomber tous les suivants. Une seule migration capricieuse suffisait donc
+     * à empêcher l'ajout d'une simple colonne, et la version du schéma restait
+     * bloquée sans que rien ne le signale.
+     *
+     * Ici, un échec est journalisé et l'on continue. Le script est idempotent :
+     * les blocs déjà passés ne feront rien au prochain démarrage, et les
+     * autres seront retentés.
+     */
+    let echecs = 0;
     if (neonHttp) {
-      // Neon HTTP : on rejoue seulement les blocs utiles, un par un.
-      for (const bloc of decouperBlocsSql(script)) {
-        await neonHttp.query(bloc, [] as never);
+      for (const bloc of instructions) {
+        try {
+          await neonHttp.query(bloc, [] as never);
+        } catch (e) {
+          echecs += 1;
+          console.warn("[db] bloc de migration ignoré", resumeSql(bloc), messageErreur(e));
+        }
       }
     } else {
       const pool = obtenirPool();
       const client = await pool.connect();
       try {
-        for (const instruction of instructions) await client.query(instruction);
+        for (const instruction of instructions) {
+          try {
+            await client.query(instruction);
+          } catch (e) {
+            // Un échec sur ALTER TABLE dans un bloc transactionnel avorte la
+            // transaction implicite : on est déjà hors transaction (une requête
+            // = une transaction en autocommit), donc rien à annuler.
+            echecs += 1;
+            console.warn("[db] bloc de migration ignoré", resumeSql(instruction), messageErreur(e));
+          }
+        }
       } finally {
         client.release();
       }
+    }
+    if (echecs > 0) {
+      console.warn(`[db] ${echecs} bloc(s) de migration ignoré(s) sur ${instructions.length}.`);
     }
 
     await executerBrut(
@@ -216,6 +247,24 @@ async function appliquerMigrations(): Promise<void> {
   } catch (e) {
     console.warn("[db] migrations non appliquées (on continue)", e);
   }
+}
+
+/** Première ligne significative d'un bloc SQL, pour le journal. */
+function resumeSql(bloc: string): string {
+  const ligne = bloc
+    .split("\n")
+    .map((l) => l.trim())
+    .find((l) => l.length > 0 && !l.startsWith("--"));
+  return (ligne ?? "").slice(0, 72);
+}
+
+/** Message court d'une erreur quelconque (pg renvoie des objets riches). */
+function messageErreur(e: unknown): string {
+  if (e && typeof e === "object") {
+    const objet = e as { message?: string; code?: string; constraint?: string };
+    return `${objet.code ?? ""} ${objet.constraint ?? ""} ${(objet.message ?? "").split("\n")[0]}`.trim();
+  }
+  return String(e);
 }
 
 /** Découpe un script SQL en blocs terminés par `;` en dehors des `$$`. */

@@ -78,9 +78,18 @@ export async function enregistrerImage(
 
   const nom = `${randomUUID()}.${format}`;
   try {
+    // `detoure_le` est renseigné seulement si le détourage a effectivement eu
+    // lieu : les photos enregistrées avant cette fonctionnalité ont la colonne
+    // à NULL, ce qui permet de les rattraper une fois au démarrage
+    // (voir `detourerImagesExistantes`).
+    const detoure = octets !== donnees;
     await sql`
-      INSERT INTO images_cadeaux (nom, type, donnees, taille)
-      VALUES (${nom}, ${mime}, ${octets}, ${octets.length})
+      INSERT INTO images_cadeaux (nom, type, donnees, taille, detoure_le, detourage_source)
+      VALUES (
+        ${nom}, ${mime}, ${octets}, ${octets.length},
+        ${detoure ? new Date().toISOString() : null},
+        ${detoure ? donnees : null}
+      )
     `;
     return { url: `/api/image/${nom}` };
   } catch (e) {
@@ -118,4 +127,70 @@ export async function lireImage(
   } catch {
     return null;
   }
+}
+
+
+/**
+ * Détoure les photos enregistrées AVANT l'arrivée du détourage automatique.
+ *
+ * Pourquoi ce rattrapage existe : le détourage n'agissait qu'à l'envoi. Les
+ * photos déjà en base — celles de la boutique en production — gardaient donc
+ * leur fond blanc, et la roue les découpait en biseau dans le secteur. C'est
+ * précisément ce que l'exploitant voyait comme « pas joli ».
+ *
+ * Traitement borné, à dessein :
+ *  • quelques images par démarrage à froid (une fonction serverless a un temps
+ *    limité, et rien ne presse : la roue reste utilisable pendant ce temps) ;
+ *  • chaque image traitée est marquée (`detoure_le`), donc jamais reprise ;
+ *  • les originales sont conservées (`detourage_source`) ;
+ *  • si le détourage n'est pas pertinent (fond non uni), l'image est marquée
+ *    quand même : on ne réessaie pas indéfiniment un cas qu'on sait refuser.
+ */
+export async function detourerImagesExistantes(
+  limite = 6,
+): Promise<{ traitees: number; restantes: number }> {
+  let traitees = 0;
+  let restantes = 0;
+  try {
+    const lignes = await sql`
+      SELECT nom, donnees FROM images_cadeaux
+      WHERE detoure_le IS NULL AND type <> 'image/gif'
+      ORDER BY cree_le
+      LIMIT ${limite}
+    `;
+
+    for (const ligne of lignes) {
+      const nom = String(ligne.nom);
+      const donnees = ligne.donnees as Buffer;
+      const resultat = await detourer(donnees);
+      if (resultat) {
+        await sql`
+          UPDATE images_cadeaux
+          SET donnees = ${resultat.png},
+              type = 'image/png',
+              taille = ${resultat.png.length},
+              detourage_source = ${donnees},
+              detoure_le = now()
+          WHERE nom = ${nom}
+        `;
+        traitees += 1;
+      } else {
+        // Rien à détourer (photo d'ambiance, fond non uni) : on marque pour ne
+        // pas retenter à chaque démarrage. L'image reste servie telle quelle.
+        await sql`UPDATE images_cadeaux SET detoure_le = now() WHERE nom = ${nom}`;
+      }
+    }
+    // Combien en reste-t-il ? Permet à l'appelant de savoir s'il doit
+    // rappeler la route, sans deviner.
+    const [reste] = await sql`
+      SELECT count(*)::int AS n FROM images_cadeaux
+      WHERE detoure_le IS NULL AND type <> 'image/gif'
+    `;
+    restantes = Number((reste as { n?: number } | undefined)?.n ?? 0);
+  } catch (e) {
+    // Colonne absente (migration pas encore passée) ou base indisponible :
+    // ce n'est jamais bloquant, on réessaiera au prochain démarrage.
+    console.warn("[images] rattrapage du détourage interrompu", e);
+  }
+  return { traitees, restantes };
 }

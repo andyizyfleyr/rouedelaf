@@ -13,7 +13,8 @@
     "db:seed": "node scripts/db-setup.mjs --seed",
     "demo": "node scripts/demo.mjs",
     "test": "node --experimental-strip-types --test tests/*.test.ts",
-    "apercu": "node --experimental-strip-types rendu-roue.mjs"
+    "apercu": "node --experimental-strip-types rendu-roue.mjs",
+    "sons": "node scripts/generer-sons.mjs && node scripts/generer-ambiance.mjs"
   },
   "dependencies": {
     "@fontsource-variable/manrope": "5.3.0",
@@ -47,6 +48,7 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.4.6",
+    "lamejs": "^1.2.1",
     "pg": "8.23.1",
     "tailwindcss": "4.3.5",
     "typescript": "^5"

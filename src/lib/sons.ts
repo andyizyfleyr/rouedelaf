@@ -16,6 +16,8 @@ import { Howl } from "howler";
  *  - Le choix « couper le son » est mémorisé dans localStorage.
  */
 
+let ambiance: Howl | null = null;
+let ambianceLancee = false;
 let tic: Howl | null = null;
 let victoire: Howl | null = null;
 let perte: Howl | null = null;
@@ -24,6 +26,11 @@ let dernierTic = 0;
 let initialise = false;
 
 const CLE_MUET = "roue:muet";
+/** Coupure de la musique d'ambiance seule (le son du jeu reste actif). */
+const CLE_AMBIANCE = "roue:ambiance-coupee";
+
+/** Volume de la musique de fond : discrète, elle accompagne la roue. */
+const VOLUME_AMBIANCE = 0.22;
 
 function creerSons() {
   if (initialise || typeof window === "undefined") return;
@@ -49,6 +56,91 @@ function creerSons() {
     volume: 0.55,
     preload: true,
   });
+
+  /*
+   * Musique de fond : boucle de 24 s synthétisée (scripts/generer-ambiance.mjs),
+   * 188 Ko en MP3. `loop: true` enchaîne sans repasser par le réseau, et
+   * l'image de départ est calée sur une grille de tempo : la boucle ne
+   * s'entend pas.
+   *
+   * `alpha`/`fade` : on ne la démarre jamais à plein volume — une musique qui
+   * surgit fait sursauter derrière un comptoir.
+   */
+  ambiance = new Howl({
+    src: ["/sons/ambiance.mp3"],
+    loop: true,
+    volume: 0,
+    preload: true,
+    html5: false,
+  });
+}
+
+/**
+ * Abonnement au réglage « musique coupée ».
+ *
+ * Sert à `useSyncExternalStore` côté composant : l'état vit dans
+ * localStorage, pas dans React. Sans ça, lire localStorage au montage
+ * provoquait un rendu différent du HTML prérendu (erreur d'hydratation), et
+ * un `setState` dans un effet déclenchait des rendus en cascade.
+ */
+const abonnesAmbiance = new Set<() => void>();
+
+export function abonnerAmbiance(abonne: () => void): () => void {
+  abonnesAmbiance.add(abonne);
+  return () => {
+    abonnesAmbiance.delete(abonne);
+  };
+}
+
+function notifierAmbiance(): void {
+  for (const abonne of abonnesAmbiance) abonne();
+}
+
+/** L'ambiance a-t-elle été coupée par l'exploitant ? */
+export function estAmbianceCoupee(): boolean {
+  if (typeof window === "undefined") return false;
+  return window.localStorage.getItem(CLE_AMBIANCE) === "1";
+}
+
+/**
+ * Démarre (ou reprend) la musique de fond.
+ *
+ * ⚠️ Aucun navigateur mobile n'autorise l'audio sans interaction : le premier
+ * appel échoue silencieusement. L'écran de la roue rappelle donc cette
+ * fonction à la première touche de l'utilisateur (voir AmbianceCasino), et le
+ * moyeu la rappelle aussi au moment du tirage.
+ */
+export function demarrerAmbiance(): void {
+  creerSons();
+  if (!ambiance || muet || estAmbianceCoupee()) return;
+  if (ambianceLancee) return;
+
+  ambianceLancee = true;
+  ambiance.volume(0);
+  ambiance.play();
+  ambiance.fade(0, VOLUME_AMBIANCE, 1800);
+}
+
+/** Coupe la musique de fond (sans toucher aux sons du jeu). */
+export function couperAmbiance(): void {
+  creerSons();
+  if (!ambiance) return;
+  ambiance.fade(ambiance.volume() as number, 0, 500);
+  window.setTimeout(() => {
+    ambiance?.pause();
+    ambianceLancee = false;
+  }, 520);
+}
+
+/** Bascule l'ambiance ; renvoie true si elle est désormais coupée. */
+export function basculerAmbiance(): boolean {
+  creerSons();
+  const coupee = !estAmbianceCoupee();
+  window.localStorage.setItem(CLE_AMBIANCE, coupee ? "1" : "0");
+  if (coupee) couperAmbiance();
+  else demarrerAmbiance();
+  notifierAmbiance();
+  return coupee;
 }
 
 /** À appeler sur la première interaction utilisateur (politique navigateurs). */
@@ -92,6 +184,10 @@ export function basculerMuet(): boolean {
     tic?.stop();
     victoire?.stop();
     perte?.stop();
+    couperAmbiance();
+  } else {
+    // Réactiver le son doit aussi relancer la musique de fond.
+    demarrerAmbiance();
   }
   return muet;
 }

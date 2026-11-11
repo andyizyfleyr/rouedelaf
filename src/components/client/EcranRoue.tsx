@@ -8,7 +8,7 @@ import { PopupResultat } from "@/components/client/PopupResultat";
 import { Roue } from "@/components/roue/Roue";
 import { entetesJeu } from "@/lib/appareil";
 import { suivreEvenement } from "@/lib/pixel";
-import { deverrouillerAudio } from "@/lib/sons";
+import { demarrerAmbiance, deverrouillerAudio } from "@/lib/sons";
 import type { CadeauRoue, ResultatTirageApi } from "@/lib/types";
 
 /**
@@ -55,6 +55,9 @@ export function EcranRoue({
     setErreur(null);
     setChargement(true);
     deverrouillerAudio();
+    // Au cas où le premier geste aurait été avalé par un navigateur récalcitrant :
+    // le clic sur le moyeu est une interaction sûre, on relance l'ambiance.
+    demarrerAmbiance();
 
     try {
       const res = await fetch("/api/tirage", { method: "POST", headers: entetesJeu() });

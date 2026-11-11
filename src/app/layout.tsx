@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 
 import { Pixels } from "@/components/marketing/Pixels";
+import { DecorCasino } from "@/components/client/DecorCasino";
 import { EnregistrerServiceWorker } from "@/components/pwa/ServiceWorker";
 import { boutique } from "@/lib/env";
 
@@ -48,7 +49,13 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="fr" className="h-full antialiased">
+      {/* Le décor photographique (salle de casino) est posé ICI, une seule
+          fois : il couvre le body en position fixed, donc il ne défile pas, ne
+          se répète pas et ne coûte qu'une image. Le dégradé `fond-velours`
+          reste le socle : photo chargée ou non, l'écran est déjà dans le
+          thème. */}
       <body className="fond-velours min-h-dvh overflow-x-hidden">
+        <DecorCasino />
         {children}
         <Pixels />
         <EnregistrerServiceWorker />

@@ -2,6 +2,7 @@ import { Suspense, type ReactNode } from "react";
 
 import { lireIdentite } from "@/lib/identite";
 import { CadreJeu } from "@/components/client/BarreJeu";
+import { AmbianceCasino } from "@/components/client/AmbianceCasino";
 import { TitreBoutique } from "@/components/client/TitreBoutique";
 
 /**
@@ -37,6 +38,7 @@ async function Identite({ children }: { children: ReactNode }) {
   return (
     <CadreJeu nom={identite.nom} pied={`${identite.adresse} · Un cadeau par personne`}>
       <TitreBoutique nom={identite.nom} />
+      <AmbianceCasino />
       {children}
     </CadreJeu>
   );

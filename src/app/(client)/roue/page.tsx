@@ -1,8 +1,10 @@
 import { Suspense } from "react";
+import { after } from "next/server";
 
 import { EcranRoue } from "@/components/client/EcranRoue";
 import { construireCases } from "@/lib/roue";
 import { chargerCadeauxRoue } from "@/server/tirage";
+import { detourerImagesExistantes } from "@/server/images";
 import { lireParametres } from "@/server/params";
 
 export const metadata = {
@@ -39,6 +41,23 @@ function SqueletteRoue() {
 }
 
 async function Contenu() {
+  /*
+   * Rattrapage du détourage, APRÈS l'envoi de la page.
+   *
+   * Les photos enregistrées avant l'arrivée du détourage automatique gardent
+   * leur fond blanc : dans une case, elles forment un rectangle penché que le
+   * secteur découpe en biseau. On les traite donc ici, en tâche de fond, pour
+   * que la roue se répare d'elle-même même si personne n'ouvre l'admin.
+   *
+   * `after()` et non une promesse lancée sans l'attendre : sur Vercel, une
+   * fonction serverless est gelée dès que la réponse est partie, et une
+   * promesse orpheline serait tuée avant d'avoir fini. `after` garantit que
+   * ce travail s'exécute APRÈS la réponse — la page, elle, n'attend rien.
+   */
+  after(async () => {
+    await detourerImagesExistantes(4);
+  });
+
   const parametres = await lireParametres();
   const cadeaux = await chargerCadeauxRoue();
   const cases = construireCases(
